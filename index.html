@@ -999,9 +999,17 @@ function MainApp({ user, onLogout }) {
       showToast(`+${xpGain} XP · +${formatPesos(coinsToPesos(coinGain))}`,"⚡");
 
     setPlayer(newP);
-    upsertDay(newDone,newP,newTodayXp);
-    pushEstado(newP);
-    pushTareaCompletada(task.id);
+        upsertDay(newDone,newP,newTodayXp);
+        pushEstado(newP);
+        pushTareaCompletada(task.id);
+    
+        // Archive "once" tasks when completed
+        if (task.frequency === "once") {
+          const updatedTasks = tasks.map(t => t.id===task.id ? {...t, archived:true} : t);
+          setTasks(updatedTasks);
+          pushTareasFull(updatedTasks);
+        }
+      };
   };
 
   const uncomplete=(task)=>{

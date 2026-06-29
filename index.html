@@ -500,6 +500,178 @@ const inp = {background:BG,border:`1px solid ${BORD}`,color:TXT,borderRadius:12,
 const gridSprite = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
 const artSprite  = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
 
+// ─── GastosScreen ─────────────────────────────────────────────────────────────
+function GastosScreen({ player, setPlayer, pushEstado, showToast, inp, CARD, BORD, MUTED }) {
+  const GOOGLE_FORM_URL="https://docs.google.com/forms/d/e/1FAIpQLScXGGnlOoWa5XHxqJvnEkAUaVrqjsp0T-n86ST0mjZ_UzjX3A/formResponse";
+  const ENTRY={fecha:"entry.2029451182",monto:"entry.837320048",categoria:"entry.2128464883",medioPago:"entry.115462852",prioridad:"entry.1716741709",gastoFijo:"entry.502852469",comentario:"entry.207132531",corresponde:"entry.2026557569"};
+  const CATEGORIAS=["Alimentación","Supermercado","Restaurantes","Cafeterías","Delivery","Transporte","Combustible","Uber/Taxi","Locomoción colectiva","Salud","Farmacia","Médico","Educación","Cursos","Libros","Entretención","Streaming","Videojuegos","Ropa","Calzado","Accesorios","Hogar","Arriendo","Servicios básicos","Internet","Teléfono","Mascotas","Belleza","Deporte","Ahorro","Inversión","Regalo","Otro"];
+  const MEDIOS_PAGO=["Crédito","Débito","Efectivo","Transferencia","Prepago"];
+  const PRIORIDADES=["Esencial","Importante","Prescindible"];
+  const CORRESPONDE=["Personal","Familiar","Trabajo","Empresa"];
+  const XP_NEEDED=(lv)=>lv*lv*50;
+
+  const todayStr=TODAY();
+  const [gFecha,    setGFecha]    = useState(todayStr);
+  const [gMonto,    setGMonto]    = useState("");
+  const [gCategoria,setGCategoria]= useState(CATEGORIAS[0]);
+  const [gMedio,    setGMedio]    = useState(MEDIOS_PAGO[0]);
+  const [gPrioridad,setGPrioridad]= useState(PRIORIDADES[0]);
+  const [gFijo,     setGFijo]     = useState("No");
+  const [gComent,   setGComent]   = useState("");
+  const [gCorrespon,setGCorrespon]= useState(CORRESPONDE[0]);
+  const [gSending,  setGSending]  = useState(false);
+  const [gSent,     setGSent]     = useState(false);
+
+  const gastosHoy    = player.gastosHoy      || 0;
+  const gastosStreak = player.gastosStreakDays|| 0;
+  const gastosTotal  = player.gastosTotal    || 0;
+  const esHoy        = gFecha === todayStr;
+  const topeDiario   = gastosHoy >= 10;
+
+  const handleRegistrar = async () => {
+    if(!gMonto||isNaN(Number(gMonto.replace(/\./g,"").replace(",",".")))) {
+      showToast("Ingresa un monto válido","⚠️"); return;
+    }
+    if(topeDiario){ showToast("Máximo 10 gastos por día para evitar abuso","⚠️"); return; }
+    setGSending(true);
+
+    const body=new URLSearchParams();
+    body.append(ENTRY.fecha,       gFecha);
+    body.append(ENTRY.monto,       gMonto.replace(/\./g,"").replace(",","."));
+    body.append(ENTRY.categoria,   gCategoria);
+    body.append(ENTRY.medioPago,   gMedio);
+    body.append(ENTRY.prioridad,   gPrioridad);
+    body.append(ENTRY.gastoFijo,   gFijo);
+    body.append(ENTRY.comentario,  gComent);
+    body.append(ENTRY.corresponde, gCorrespon);
+    try { await fetch(GOOGLE_FORM_URL,{method:"POST",mode:"no-cors",body}); } catch(_){}
+
+    const today2=TODAY();
+    const esHoyEnvio=gFecha===today2;
+    const xpGain=10;
+    const xpBono=esHoyEnvio?15:0;
+
+    const lastG=player.gastosLastDate;
+    let newStreakG=player.gastosStreakDays||0;
+    const ayer2=new Date(today2); ayer2.setDate(ayer2.getDate()-1);
+    const ayerStr2=ayer2.toISOString().split("T")[0];
+    if(lastG===today2){/* mismo día, no cambia racha */}
+    else if(lastG===ayerStr2) newStreakG=(player.gastosStreakDays||0)+1;
+    else newStreakG=1;
+
+    const newGastosHoy   = lastG===today2?(player.gastosHoy||0)+1:1;
+    const newGastosTotal = (player.gastosTotal||0)+1;
+    let newXp=player.xp+xpGain+xpBono;
+    let newTotalXp=player.totalXpEarned+xpGain+xpBono;
+    let newLevel=player.level;
+    while(newXp>=XP_NEEDED(newLevel+1)){newXp-=XP_NEEDED(newLevel+1);newLevel++;}
+
+    const newBadges=[...(player.badges||[])];
+    const earn2=(id)=>{if(!newBadges.includes(id))newBadges.push(id);};
+    if(newGastosTotal>=30) earn2("gastos30");
+    if(newStreakG>=30)     earn2("tesoreria30");
+
+    let rachaBonus=0;
+    if(newStreakG>0&&newStreakG%7===0&&lastG!==today2) rachaBonus=100;
+    if(rachaBonus>0){newXp+=rachaBonus;newTotalXp+=rachaBonus;}
+
+    const newP={...player,xp:newXp,totalXpEarned:newTotalXp,level:newLevel,badges:newBadges,
+      gastosTotal:newGastosTotal,gastosStreakDays:newStreakG,gastosLastDate:today2,gastosHoy:newGastosHoy};
+    setPlayer(newP);
+    pushEstado(newP);
+
+    setGSending(false); setGSent(true);
+    const msg=xpBono>0
+      ?`+${xpGain+xpBono} XP · Gasto registrado · 🔥 Racha: ${newStreakG}d`
+      :`+${xpGain} XP · Gasto registrado${rachaBonus>0?` · 🎉 +${rachaBonus} XP racha!`:""}`;
+    showToast(msg,"💸");
+    if(rachaBonus>0) setTimeout(()=>showToast(`🎉 ¡${newStreakG} días de racha! +${rachaBonus} XP bonus`,"🏆"),1500);
+    setTimeout(()=>{setGMonto("");setGComent("");setGFecha(todayStr);setGSent(false);},2000);
+  };
+
+  const inpG={...inp,width:"100%",marginBottom:0};
+  const labelG={color:"#94a3b8",fontSize:12,fontWeight:"bold",marginBottom:4,display:"block"};
+
+  return (
+    <div className="max-w-md mx-auto px-4 pt-4 pb-32">
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        {[["💸 "+gastosHoy,"Hoy","#fbbf24"],["🔥 "+gastosStreak+"d","Racha","#f87171"],["⭐ +"+(esHoy?25:10),"XP al reg.","#a78bfa"]].map(([val,lbl,col])=>(
+          <div key={lbl} className="rounded-2xl p-3 text-center" style={{background:CARD,border:`1px solid ${BORD}`}}>
+            <div className="text-lg font-black" style={{color:col}}>{val}</div>
+            <div className="text-xs mt-0.5" style={{color:MUTED}}>{lbl}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Info XP */}
+      <div className="rounded-2xl p-3 mb-4 text-xs" style={{background:"#0a1a0a",border:"1px solid #166534",color:"#4ade80"}}>
+        {esHoy?"✅ Registrando gastos de hoy: +10 XP base + 15 XP bono = 25 XP":"📅 Registrando gasto de otro día: +10 XP (sin bono)"}
+        {gastosStreak>0&&gastosStreak%7!==0&&<span> · ¡{7-gastosStreak%7} días para bono racha!</span>}
+      </div>
+
+      {/* Formulario */}
+      <div className="rounded-2xl p-4 mb-4" style={{background:CARD,border:`1px solid ${BORD}`}}>
+        <h3 className="font-black mb-4" style={{color:"#fbbf24",fontSize:15}}>💸 Registrar Gasto</h3>
+        <div className="flex flex-col gap-3">
+          <div><label style={labelG}>Fecha</label>
+            <input type="date" value={gFecha} onChange={e=>setGFecha(e.target.value)} style={inpG}/></div>
+          <div><label style={labelG}>Monto (pesos)</label>
+            <input type="number" placeholder="Ej: 5000" value={gMonto} onChange={e=>setGMonto(e.target.value)} style={inpG} inputMode="numeric"/></div>
+          <div><label style={labelG}>Categoría</label>
+            <select value={gCategoria} onChange={e=>setGCategoria(e.target.value)} style={inpG}>
+              {CATEGORIAS.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+          <div><label style={labelG}>Medio de pago</label>
+            <select value={gMedio} onChange={e=>setGMedio(e.target.value)} style={inpG}>
+              {MEDIOS_PAGO.map(m=><option key={m} value={m}>{m}</option>)}</select></div>
+          <div><label style={labelG}>Prioridad</label>
+            <div className="flex gap-2">
+              {PRIORIDADES.map(p=>(
+                <button key={p} onClick={()=>setGPrioridad(p)} className="flex-1 py-2 rounded-xl text-xs font-black"
+                  style={{background:gPrioridad===p?p==="Esencial"?"#14532d":p==="Importante"?"#1e3a5f":"#4a1942":"#111827",
+                    color:gPrioridad===p?p==="Esencial"?"#4ade80":p==="Importante"?"#60a5fa":"#e879f9":"#94a3b8",
+                    border:`1px solid ${gPrioridad===p?p==="Esencial"?"#166534":p==="Importante"?"#1e40af":"#7e22ce":BORD}`,cursor:"pointer"}}>
+                  {p}</button>))}</div></div>
+          <div><label style={labelG}>¿Gasto fijo?</label>
+            <div className="flex gap-2">
+              {["Sí","No"].map(v=>(
+                <button key={v} onClick={()=>setGFijo(v)} className="flex-1 py-2 rounded-xl text-xs font-black"
+                  style={{background:gFijo===v?"#1a1a38":"#111827",color:gFijo===v?"#a78bfa":"#94a3b8",
+                    border:`1px solid ${gFijo===v?"#7c3aed":BORD}`,cursor:"pointer"}}>
+                  {v}</button>))}</div></div>
+          <div><label style={labelG}>¿A qué corresponde?</label>
+            <select value={gCorrespon} onChange={e=>setGCorrespon(e.target.value)} style={inpG}>
+              {CORRESPONDE.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+          <div><label style={labelG}>Comentario (opcional)</label>
+            <input type="text" placeholder="Descripción breve..." value={gComent}
+              onChange={e=>setGComent(e.target.value)} style={inpG} maxLength={200}/></div>
+
+          {topeDiario&&(
+            <div className="rounded-xl p-3 text-xs text-center" style={{background:"#1a0a0a",color:"#f87171",border:"1px solid #991b1b"}}>
+              ⚠️ Límite diario alcanzado (10 gastos). Vuelve mañana.</div>)}
+
+          <button onClick={handleRegistrar} disabled={gSending||gSent||topeDiario}
+            className="w-full py-3.5 rounded-2xl font-black text-sm"
+            style={{background:gSent?"#14532d":topeDiario?"#374151":"linear-gradient(135deg,#d97706,#fbbf24)",
+              color:gSent?"#4ade80":topeDiario?"#6b7280":"#000",border:"none",
+              cursor:gSending||gSent||topeDiario?"not-allowed":"pointer",opacity:gSending?0.7:1,fontSize:16}}>
+            {gSent?"✅ ¡Gasto registrado!":gSending?"Registrando...":"💸 Registrar Gasto"}
+          </button>
+        </div>
+      </div>
+
+      {/* Info sistema */}
+      <div className="rounded-2xl p-3 text-xs" style={{background:"#0a0a1a",border:`1px solid ${BORD}`,color:"#64748b"}}>
+        <p className="font-bold mb-1" style={{color:"#475569"}}>Sistema de incentivos:</p>
+        <p>• Gasto del día: +25 XP (10 base + 15 bono)</p>
+        <p>• Gasto antiguo: +10 XP</p>
+        <p>• 7 días seguidos: +100 XP extra</p>
+        <p>• Máx. 10 gastos/día · Sin monedas (previene abuso)</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 function MainApp({ user, onLogout }) {
   const [ready,      setReady]      = useState(false);
@@ -2129,268 +2301,16 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
       })()}
 
       {/* ═══════════════════════════════════════ GASTOS SCREEN ══════════════════ */}
-      {screen==="gastos"&&(()=>{
-        const GOOGLE_FORM_URL="https://docs.google.com/forms/d/e/1FAIpQLScXGGnlOoWa5XHxqJvnEkAUaVrqjsp0T-n86ST0mjZ_UzjX3A/formResponse";
-        const ENTRY={
-          fecha:"entry.2029451182",
-          monto:"entry.837320048",
-          categoria:"entry.2128464883",
-          medioPago:"entry.115462852",
-          prioridad:"entry.1716741709",
-          gastoFijo:"entry.502852469",
-          comentario:"entry.207132531",
-          corresponde:"entry.2026557569",
-        };
-        const CATEGORIAS=["Alimentación","Supermercado","Restaurantes","Cafeterías","Delivery","Transporte","Combustible","Uber/Taxi","Locomoción colectiva","Salud","Farmacia","Médico","Educación","Cursos","Libros","Entretención","Streaming","Videojuegos","Ropa","Calzado","Accesorios","Hogar","Arriendo","Servicios básicos","Internet","Teléfono","Mascotas","Belleza","Deporte","Ahorro","Inversión","Regalo","Otro"];
-        const MEDIOS_PAGO=["Crédito","Débito","Efectivo","Transferencia","Prepago"];
-        const PRIORIDADES=["Esencial","Importante","Prescindible"];
-        const CORRESPONDE=["Personal","Familiar","Trabajo","Empresa"];
-
-        const todayStr=TODAY();
-        const [gFecha,    setGFecha]    = React.useState(todayStr);
-        const [gMonto,    setGMonto]    = React.useState("");
-        const [gCategoria,setGCategoria]= React.useState(CATEGORIAS[0]);
-        const [gMedio,    setGMedio]    = React.useState(MEDIOS_PAGO[0]);
-        const [gPrioridad,setGPrioridad]= React.useState(PRIORIDADES[0]);
-        const [gFijo,     setGFijo]     = React.useState("No");
-        const [gComent,   setGComent]   = React.useState("");
-        const [gCorrespon,setGCorrespon]= React.useState(CORRESPONDE[0]);
-        const [gSending,  setGSending]  = React.useState(false);
-        const [gSent,     setGSent]     = React.useState(false);
-
-        // Stats del player
-        const gastosTotal    = player.gastosTotal    || 0;
-        const gastosStreak   = player.gastosStreakDays || 0;
-        const gastosHoy      = player.gastosHoy      || 0;
-        const esHoy          = gFecha === todayStr;
-        const xpEstimado     = esHoy ? 25 : 10; // base 10 + bono 15 si es hoy
-        const topeDiario     = gastosHoy >= 10;
-
-        const handleRegistrar = async () => {
-          if(!gMonto || isNaN(Number(gMonto.replace(/\./g,"").replace(",",".")))) {
-            showToast("Ingresa un monto válido","⚠️"); return;
-          }
-          if(topeDiario){ showToast("Máximo 10 gastos por día para evitar abuso","⚠️"); return; }
-          setGSending(true);
-
-          // Enviar al Google Form via no-cors fetch
-          const body=new URLSearchParams();
-          body.append(ENTRY.fecha,       gFecha);
-          body.append(ENTRY.monto,       gMonto.replace(/\./g,"").replace(",","."));
-          body.append(ENTRY.categoria,   gCategoria);
-          body.append(ENTRY.medioPago,   gMedio);
-          body.append(ENTRY.prioridad,   gPrioridad);
-          body.append(ENTRY.gastoFijo,   gFijo);
-          body.append(ENTRY.comentario,  gComent);
-          body.append(ENTRY.corresponde, gCorrespon);
-          try {
-            await fetch(GOOGLE_FORM_URL, {method:"POST",mode:"no-cors",body});
-          } catch(_) {}
-
-          // Calcular XP
-          const today2=TODAY();
-          const esHoyEnvio = gFecha === today2;
-          let xpGain = 10;
-          let xpBono = 0;
-          if(esHoyEnvio){ xpGain=10; xpBono=15; }
-
-          // Actualizar racha de tesorería
-          const lastG = player.gastosLastDate;
-          let newStreakG = player.gastosStreakDays || 0;
-          const hoy2 = new Date(today2);
-          const ayer2 = new Date(hoy2); ayer2.setDate(ayer2.getDate()-1);
-          const ayerStr2 = ayer2.toISOString().split("T")[0];
-          if(lastG===today2){
-            // ya registró hoy, solo acumular si no pasó el tope
-          } else if(lastG===ayerStr2){
-            newStreakG = (player.gastosStreakDays||0)+1;
-          } else if(lastG){
-            newStreakG = 1; // rompió racha
-          } else {
-            newStreakG = 1;
-          }
-
-          const newGastosHoy = lastG===today2 ? (player.gastosHoy||0)+1 : 1;
-          const newGastosTotal = (player.gastosTotal||0)+1;
-          let newXp = player.xp + xpGain + xpBono;
-          let newTotalXp = player.totalXpEarned + xpGain + xpBono;
-
-          // Subir nivel si corresponde
-          let newLevel = player.level;
-          const XP_NEEDED=(lv)=>lv*lv*50;
-          while(newXp >= XP_NEEDED(newLevel+1)){newXp-=XP_NEEDED(newLevel+1);newLevel++;}
-
-          // Logros de gastos
-          const newBadges=[...player.badges];
-          const earn2=(id)=>{if(!newBadges.includes(id))newBadges.push(id);};
-          if(newGastosTotal>=30) earn2("gastos30");
-          if(newStreakG>=30) earn2("tesoreria30");
-
-          // Bono de racha cada 7 días
-          let rachaBonus=0;
-          if(newStreakG>0 && newStreakG%7===0 && lastG!==today2) rachaBonus=100;
-          if(rachaBonus>0){newXp+=rachaBonus; newTotalXp+=rachaBonus;}
-
-          const newP={...player,
-            xp:newXp, totalXpEarned:newTotalXp, level:newLevel, badges:newBadges,
-            gastosTotal:newGastosTotal, gastosStreakDays:newStreakG,
-            gastosLastDate:today2, gastosHoy:newGastosHoy,
-          };
-          setPlayer(newP);
-          pushEstado(newP);
-
-          setGSending(false); setGSent(true);
-          const msg=xpBono>0
-            ? `+${xpGain+xpBono} XP · Gasto registrado · 🔥 Racha: ${newStreakG}d`
-            : `+${xpGain} XP · Gasto registrado${rachaBonus>0?` · 🎉 +${rachaBonus} XP racha!`:""}`;
-          showToast(msg,"💸");
-          if(rachaBonus>0) setTimeout(()=>showToast(`🎉 ¡${newStreakG} días de racha! +${rachaBonus} XP bonus`,"🏆"),1500);
-
-          // Reset form
-          setTimeout(()=>{
-            setGMonto(""); setGComent(""); setGFecha(todayStr); setGSent(false);
-          },2000);
-        };
-
-        const inpG={...inp,width:"100%",marginBottom:0};
-        const labelG={color:"#94a3b8",fontSize:12,fontWeight:"bold",marginBottom:4,display:"block"};
-
-        return (
-        <div className="max-w-md mx-auto px-4 pt-4 pb-32">
-
-          {/* Stats de tesorería */}
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            <div className="rounded-2xl p-3 text-center" style={{background:CARD,border:`1px solid ${BORD}`}}>
-              <div className="text-lg font-black" style={{color:"#fbbf24"}}>💸 {gastosHoy}</div>
-              <div className="text-xs mt-0.5" style={{color:MUTED}}>Hoy</div>
-            </div>
-            <div className="rounded-2xl p-3 text-center" style={{background:CARD,border:`1px solid ${BORD}`}}>
-              <div className="text-lg font-black" style={{color:"#f87171"}}>🔥 {gastosStreak}d</div>
-              <div className="text-xs mt-0.5" style={{color:MUTED}}>Racha</div>
-            </div>
-            <div className="rounded-2xl p-3 text-center" style={{background:CARD,border:`1px solid ${BORD}`}}>
-              <div className="text-lg font-black" style={{color:"#a78bfa"}}>⭐ +{esHoy?25:10}</div>
-              <div className="text-xs mt-0.5" style={{color:MUTED}}>XP al reg.</div>
-            </div>
-          </div>
-
-          {/* Info XP */}
-          <div className="rounded-2xl p-3 mb-4 text-xs" style={{background:"#0a1a0a",border:"1px solid #166534",color:"#4ade80"}}>
-            {esHoy
-              ? "✅ Registrando gastos de hoy: +10 XP base + 15 XP bono por hoy = 25 XP"
-              : "📅 Registrando gasto de otro día: +10 XP (sin bono de hoy)"}
-            {gastosStreak>0&&gastosStreak%7!==0&&<span> · ¡{7-gastosStreak%7} días para bono racha!</span>}
-          </div>
-
-          {/* Formulario */}
-          <div className="rounded-2xl p-4 mb-4" style={{background:CARD,border:`1px solid ${BORD}`}}>
-            <h3 className="font-black mb-4" style={{color:"#fbbf24",fontSize:15}}>💸 Registrar Gasto</h3>
-
-            <div className="flex flex-col gap-3">
-              <div>
-                <label style={labelG}>Fecha</label>
-                <input type="date" value={gFecha} onChange={e=>setGFecha(e.target.value)} style={inpG}/>
-              </div>
-              <div>
-                <label style={labelG}>Monto (pesos)</label>
-                <input type="number" placeholder="Ej: 5000" value={gMonto}
-                  onChange={e=>setGMonto(e.target.value)} style={inpG} inputMode="numeric"/>
-              </div>
-              <div>
-                <label style={labelG}>Categoría</label>
-                <select value={gCategoria} onChange={e=>setGCategoria(e.target.value)} style={inpG}>
-                  {CATEGORIAS.map(c=><option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={labelG}>Medio de pago</label>
-                <select value={gMedio} onChange={e=>setGMedio(e.target.value)} style={inpG}>
-                  {MEDIOS_PAGO.map(m=><option key={m} value={m}>{m}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={labelG}>Prioridad</label>
-                <div className="flex gap-2">
-                  {PRIORIDADES.map(p=>(
-                    <button key={p} onClick={()=>setGPrioridad(p)}
-                      className="flex-1 py-2 rounded-xl text-xs font-black transition-all"
-                      style={{
-                        background:gPrioridad===p
-                          ?p==="Esencial"?"#14532d":p==="Importante"?"#1e3a5f":"#4a1942"
-                          :"#111827",
-                        color:gPrioridad===p
-                          ?p==="Esencial"?"#4ade80":p==="Importante"?"#60a5fa":"#e879f9"
-                          :"#94a3b8",
-                        border:`1px solid ${gPrioridad===p
-                          ?p==="Esencial"?"#166534":p==="Importante"?"#1e40af":"#7e22ce"
-                          :BORD}`,
-                        cursor:"pointer"
-                      }}>
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label style={labelG}>¿Gasto fijo?</label>
-                <div className="flex gap-2">
-                  {["Sí","No"].map(v=>(
-                    <button key={v} onClick={()=>setGFijo(v)}
-                      className="flex-1 py-2 rounded-xl text-xs font-black transition-all"
-                      style={{
-                        background:gFijo===v?"#1a1a38":"#111827",
-                        color:gFijo===v?"#a78bfa":"#94a3b8",
-                        border:`1px solid ${gFijo===v?"#7c3aed":BORD}`,
-                        cursor:"pointer"
-                      }}>
-                      {v}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label style={labelG}>¿A qué corresponde?</label>
-                <select value={gCorrespon} onChange={e=>setGCorrespon(e.target.value)} style={inpG}>
-                  {CORRESPONDE.map(c=><option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={labelG}>Comentario (opcional)</label>
-                <input type="text" placeholder="Descripción breve..." value={gComent}
-                  onChange={e=>setGComent(e.target.value)} style={inpG} maxLength={200}/>
-              </div>
-
-              {topeDiario&&(
-                <div className="rounded-xl p-3 text-xs text-center" style={{background:"#1a0a0a",color:"#f87171",border:"1px solid #991b1b"}}>
-                  ⚠️ Límite diario alcanzado (10 gastos). Vuelve mañana.
-                </div>
-              )}
-
-              <button onClick={handleRegistrar} disabled={gSending||gSent||topeDiario}
-                className="w-full py-3.5 rounded-2xl font-black text-sm transition-all"
-                style={{
-                  background:gSent?"#14532d":topeDiario?"#374151":"linear-gradient(135deg,#d97706,#fbbf24)",
-                  color:gSent?"#4ade80":topeDiario?"#6b7280":"#000",
-                  border:"none",cursor:gSending||gSent||topeDiario?"not-allowed":"pointer",
-                  opacity:gSending?0.7:1,
-                  fontSize:16,letterSpacing:"-0.3px"
-                }}>
-                {gSent?"✅ ¡Gasto registrado!":gSending?"Registrando...":"💸 Registrar Gasto"}
-              </button>
-            </div>
-          </div>
-
-          {/* Info sistema */}
-          <div className="rounded-2xl p-3 text-xs" style={{background:"#0a0a1a",border:`1px solid ${BORD}`,color:"#64748b"}}>
-            <p className="font-bold mb-1" style={{color:"#475569"}}>Sistema de incentivos:</p>
-            <p>• Gasto del día: +25 XP (10 base + 15 bono)</p>
-            <p>• Gasto antiguo: +10 XP</p>
-            <p>• 7 días seguidos: +100 XP extra</p>
-            <p>• Máx. 10 gastos/día · Sin monedas (previene abuso)</p>
-          </div>
-        </div>
-        );
-      })()}
+      {screen==="gastos"&&(
+        <GastosScreen
+          player={player}
+          setPlayer={setPlayer}
+          pushEstado={pushEstado}
+          showToast={showToast}
+          inp={inp}
+          CARD={CARD} BORD={BORD} MUTED={MUTED}
+        />
+      )}
 
 
       <div className="fixed bottom-0 inset-x-0" style={{

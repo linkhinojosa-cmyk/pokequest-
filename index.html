@@ -418,7 +418,45 @@ const DIFF = {
 // ─── Coin / reward economy ──────────────────────────────────────────────────
 // Hardcoded default Apps Script URL — all users sync here unless they set an override.
 const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby9zIYIdfmgVFVGbkmRiBKRAnWz5b9KMq237XUNMAE1_04teKDrLP0ymcKEfQgWTPjk/exec";
+// ─── Security config (must match Apps Script v4) ────────────────────────────
+const API_SECRET     = "pq-2026-clau-hinojosa-7f9d3a8c1b5e";
+const ADMIN_KEYS = {
+  "pedro": "pedro-admin-2026-9f8e7d6c5b4a"
+};
 
+// ─── Task frequency config ──────────────────────────────────────────────────
+const FREQUENCIES = {
+  daily:    { label:"Diaria",          icon:"📅" },
+  weekdays: { label:"Días específicos", icon:"📆" },
+  weekly:   { label:"Semanal",         icon:"📊" },
+  monthly:  { label:"Mensual",         icon:"🗓️" },
+  once:     { label:"Única",           icon:"⭐" },
+};
+const WEEKDAY_LABELS = ["D","L","M","X","J","V","S"];  // 0=Sunday
+
+// Determine if a task should appear today based on its frequency
+const shouldShowToday = (task, dateStr) => {
+  if (task.archived) return false;
+  const freq = task.frequency || "daily";
+  if (freq === "daily" || freq === "once") return true;
+  const d = new Date(dateStr + "T12:00:00");
+  const dow = d.getDay();           // 0=Sun, 1=Mon ... 6=Sat
+  const dom = d.getDate();          // 1-31
+  if (freq === "weekdays") {
+    const cfg = task.freqConfig || {};
+    const days = cfg.days || [];
+    return days.indexOf(dow) >= 0;
+  }
+  if (freq === "weekly") {
+    const cfg = task.freqConfig || {};
+    return Number(cfg.dayOfWeek) === dow;
+  }
+  if (freq === "monthly") {
+    const cfg = task.freqConfig || {};
+    return Number(cfg.dayOfMonth) === dom;
+  }
+  return true;
+};
 const COINS_PER_PESO = 100;
 const WEEKLY_CAP_PESOS = 30000;
 const WEEKLY_CAP_COINS = WEEKLY_CAP_PESOS * COINS_PER_PESO;

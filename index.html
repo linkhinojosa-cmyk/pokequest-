@@ -501,7 +501,7 @@ const gridSprite = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/ma
 const artSprite  = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
 
 // ─── GastosScreen ─────────────────────────────────────────────────────────────
-function GastosScreen({ player, setPlayer, pushEstado, showToast, inp, CARD, BORD, MUTED }) {
+function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CARD, BORD, MUTED }) {
   const CATEGORIAS=["Alimentación","Supermercado","Restaurantes","Cafeterías","Delivery","Transporte","Combustible","Uber/Taxi","Locomoción colectiva","Salud","Farmacia","Médico","Educación","Cursos","Libros","Entretención","Streaming","Videojuegos","Ropa","Calzado","Accesorios","Hogar","Arriendo","Servicios básicos","Internet","Teléfono","Mascotas","Belleza","Deporte","Ahorro","Inversión","Regalo","Otro"];
   const MEDIOS_PAGO=["Crédito","Débito","Efectivo","Transferencia","Prepago"];
   const PRIORIDADES=["Esencial","Importante","Prescindible"];
@@ -2307,16 +2307,18 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
       })()}
 
       {/* ═══════════════════════════════════════ GASTOS SCREEN ══════════════════ */}
-      {screen==="gastos"&&(
-        <GastosScreen
-          player={player}
-          setPlayer={setPlayer}
-          pushEstado={pushEstado}
-          showToast={showToast}
-          inp={inp}
-          CARD={CARD} BORD={BORD} MUTED={MUTED}
-        />
-      )}
+        // DESPUÉS — agrega user:
+        {screen==="gastos"&&(
+          <GastosScreen
+            player={player}
+            setPlayer={setPlayer}
+            pushEstado={pushEstado}
+            showToast={showToast}
+            user={user}
+            inp={inp} 
+            CARD={CARD} BORD={BORD} MUTED={MUTED}
+          />
+        )}
 
 
       <div className="fixed bottom-0 inset-x-0" style={{

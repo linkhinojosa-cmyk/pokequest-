@@ -502,8 +502,6 @@ const artSprite  = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/ma
 
 // ─── GastosScreen ─────────────────────────────────────────────────────────────
 function GastosScreen({ player, setPlayer, pushEstado, showToast, inp, CARD, BORD, MUTED }) {
-  const GOOGLE_FORM_URL="https://docs.google.com/forms/d/e/1FAIpQLScXGGnlOoWa5XHxqJvnEkAUaVrqjsp0T-n86ST0mjZ_UzjX3A/formResponse";
-  const ENTRY={fecha:"entry.2029451182",monto:"entry.837320048",categoria:"entry.2128464883",medioPago:"entry.115462852",prioridad:"entry.1716741709",gastoFijo:"entry.502852469",comentario:"entry.207132531",corresponde:"entry.2026557569"};
   const CATEGORIAS=["Alimentación","Supermercado","Restaurantes","Cafeterías","Delivery","Transporte","Combustible","Uber/Taxi","Locomoción colectiva","Salud","Farmacia","Médico","Educación","Cursos","Libros","Entretención","Streaming","Videojuegos","Ropa","Calzado","Accesorios","Hogar","Arriendo","Servicios básicos","Internet","Teléfono","Mascotas","Belleza","Deporte","Ahorro","Inversión","Regalo","Otro"];
   const MEDIOS_PAGO=["Crédito","Débito","Efectivo","Transferencia","Prepago"];
   const PRIORIDADES=["Esencial","Importante","Prescindible"];
@@ -535,16 +533,24 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, inp, CARD, BOR
     if(topeDiario){ showToast("Máximo 10 gastos por día para evitar abuso","⚠️"); return; }
     setGSending(true);
 
-    const body=new URLSearchParams();
-    body.append(ENTRY.fecha,       gFecha);
-    body.append(ENTRY.monto,       gMonto.replace(/\./g,"").replace(",","."));
-    body.append(ENTRY.categoria,   gCategoria);
-    body.append(ENTRY.medioPago,   gMedio);
-    body.append(ENTRY.prioridad,   gPrioridad);
-    body.append(ENTRY.gastoFijo,   gFijo);
-    body.append(ENTRY.comentario,  gComent);
-    body.append(ENTRY.corresponde, gCorrespon);
-    try { await fetch(GOOGLE_FORM_URL,{method:"POST",mode:"no-cors",body}); } catch(_){}
+    try {
+  await fetch(DEFAULT_SCRIPT_URL, {
+    method: "POST",
+    mode: "no-cors",
+    body: JSON.stringify({
+      type:       "gasto",
+      usuario:    user.displayName,
+      fecha:      gFecha,
+      monto:      Number(gMonto.replace(/\./g,"").replace(",",".")),
+      categoria:  gCategoria,
+      medio_pago: gMedio,
+      prioridad:  gPrioridad,
+      gasto_fijo: gFijo,
+      corresponde:gCorrespon,
+      comentario: gComent,
+    })
+  });
+} catch(_){}
 
     const today2=TODAY();
     const esHoyEnvio=gFecha===today2;

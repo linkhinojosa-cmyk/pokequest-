@@ -743,7 +743,7 @@ function MainApp({ user, onLogout }) {
   const [descCache,    setDescCache]    = useState({});
   const [missedYesterday, setMissedYesterday] = useState([]); // task IDs not done yesterday
   const [xpLostYesterday, setXpLostYesterday] = useState(0); // XP lost from missed tasks
-  const [newT,       setNewT]       = useState({name:"",category:"personal",difficulty:"easy",icon:"✅",sub:"uber"});
+  const [newT,       setNewT]       = useState({name:"",category:"personal",difficulty:"easy",icon:"✅",sub:"uber",frequency:"daily",freqConfig:null});
   const toastRef = useRef(null);
   const xpRef    = useRef(null);
 
@@ -1123,10 +1123,12 @@ function MainApp({ user, onLogout }) {
   const addTask=()=>{
     if(!newT.name.trim())return;
     const newObj={id:`c-${Date.now()}`,name:newT.name.trim(),category:newT.category,
-      difficulty:newT.difficulty,icon:newT.icon||"✅",...(newT.category==="trabajo"?{sub:newT.sub}:{})};
+      difficulty:newT.difficulty,icon:newT.icon||"✅",
+      frequency:newT.frequency||"daily",freqConfig:newT.freqConfig||null,
+      ...(newT.category==="trabajo"?{sub:newT.sub}:{})};
     const list=[...tasks,newObj];
     setTasks(list); pushTareasFull(list);
-    setNewT({name:"",category:"personal",difficulty:"easy",icon:"✅",sub:"uber"});
+    setNewT({name:"",category:"personal",difficulty:"easy",icon:"✅",sub:"uber",frequency:"daily",freqConfig:null});
     showToast("¡Misión creada!","📝");
   };
   const importFile=(e)=>{
@@ -1188,7 +1190,7 @@ function MainApp({ user, onLogout }) {
       "Sacar la basura,hogar,easy,🗑️,",
       "Meditar 10 minutos,personal,easy,🧘,",
       "Caminata de 30 min,personal,medium,🚶,",
-      "Reporte semanal,trabajo,medium,📊,inojosa",
+      "Reporte semanal,trabajo,medium,📊,inojosa (Hinojosa)",
       "Bono por viajes nocturnos,trabajo,hard,🌙,uber",
     ].join("\n");
     const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
@@ -1590,7 +1592,7 @@ function MainApp({ user, onLogout }) {
           {tab==="trabajo"&&(
             <div className="flex gap-2 mb-4">
               {[["uber","🚗","Uber","#d1d5db","#1c1c1c","#ffffff60"],
-                ["inojosa","🏢","Inojosa","#f87171","#1a0505","#ef444460"]].map(([key,ico,lbl,col,bg,bc])=>(
+                ["inojosa","🏢","Hinojosa","#f87171","#1a0505","#ef444460"]].map(([key,ico,lbl,col,bg,bc])=>(
                 <button key={key} onClick={()=>setSubTab(key)}
                   className="flex-1 rounded-xl py-2.5 text-sm font-bold"
                   style={{background:subTab===key?bg:BG,border:`1px solid ${subTab===key?bc:BORD}`,color:subTab===key?col:MUTED}}>
@@ -1799,9 +1801,45 @@ function MainApp({ user, onLogout }) {
                     <option value="hard">Épica +55 XP</option>
                   </select>
                 </div>
+                <select value={newT.frequency||"daily"} onChange={e=>setNewT(p=>({...p,frequency:e.target.value,freqConfig:null}))} style={{...inp,width:"100%"}}>
+                  <option value="daily">📅 Diaria (todos los días)</option>
+                  <option value="weekdays">📆 Días específicos de la semana</option>
+                  <option value="weekly">📊 Semanal (1 día por semana)</option>
+                  <option value="monthly">🗓️ Mensual (1 día por mes)</option>
+                  <option value="once">⭐ Única (desaparece al completar)</option>
+                </select>
+                {newT.frequency==="weekdays"&&(
+                  <div className="flex gap-1 flex-wrap">
+                    {WEEKDAY_LABELS.map((lbl,i)=>{
+                      const days=(newT.freqConfig&&newT.freqConfig.days)||[];
+                      const on=days.indexOf(i)>=0;
+                      return <button key={i} type="button" onClick={()=>{
+                        const cur=(newT.freqConfig&&newT.freqConfig.days)||[];
+                        const nxt=on?cur.filter(d=>d!==i):[...cur,i].sort();
+                        setNewT(p=>({...p,freqConfig:{days:nxt}}));
+                      }} style={{flex:1,padding:"8px 0",borderRadius:8,fontSize:11,fontWeight:"black",
+                        cursor:"pointer",border:`1px solid ${on?"#4ade80":BORD}`,
+                        background:on?"#052e16":BG,color:on?"#4ade80":MUTED}}>{lbl}</button>;
+                    })}
+                  </div>
+                )}
+                {newT.frequency==="weekly"&&(
+                  <select value={(newT.freqConfig&&newT.freqConfig.dayOfWeek)||1}
+                    onChange={e=>setNewT(p=>({...p,freqConfig:{dayOfWeek:Number(e.target.value)}}))} style={{...inp,width:"100%"}}>
+                    {["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"].map((d,i)=>
+                      <option key={i} value={i}>Cada {d}</option>)}
+                  </select>
+                )}
+                {newT.frequency==="monthly"&&(
+                  <select value={(newT.freqConfig&&newT.freqConfig.dayOfMonth)||1}
+                    onChange={e=>setNewT(p=>({...p,freqConfig:{dayOfMonth:Number(e.target.value)}}))} style={{...inp,width:"100%"}}>
+                    {Array.from({length:28},(_,i)=>i+1).map(d=>
+                      <option key={d} value={d}>Día {d} de cada mes</option>)}
+                  </select>
+                )}
                 {newT.category==="trabajo"&&(
                   <select value={newT.sub} onChange={e=>setNewT(p=>({...p,sub:e.target.value}))} style={{...inp,width:"100%"}}>
-                    <option value="uber">🚗 Uber</option><option value="inojosa">🏢 Inojosa</option>
+                    <option value="uber">🚗 Uber</option><option value="inojosa">🏢 Hinojosa</option>
                   </select>
                 )}
                 <div className="flex gap-2">

@@ -1215,10 +1215,28 @@ function MainApp({ user, onLogout }) {
   };
 
   // ── Cloud sync helpers ───────────────────────────────────────────────────
+  // Compute a user token derived from username + PIN hash (stored in localStorage)
+  const getUserToken = async () => {
+    try {
+      const r = await _store.get(`pq-${user.username}-token`);
+      if (r && r.value) return r.value;
+      // Derive from pinHash if available
+      const u = user.pinHash ? user.pinHash.substring(0, 32) : ("nopin-" + user.username);
+      await _store.set(`pq-${user.username}-token`, u);
+      return u;
+    } catch { return "nopin-" + user.username; }
+  };
+
   const cloudGet = async (action, params={}) => {
     try {
       const url = await getScriptUrl();
-      const qs = new URLSearchParams({action, ...params}).toString();
+      const userToken = await getUserToken();
+      const qs = new URLSearchParams({
+        action,
+        secret: API_SECRET,
+        userToken: userToken,
+        ...params
+      }).toString();
       const res = await fetch(`${url}?${qs}`);
       return await res.json();
     } catch { return null; }
@@ -1227,7 +1245,12 @@ function MainApp({ user, onLogout }) {
   const cloudPost = async (payload) => {
     try {
       const url = await getScriptUrl();
-      return await fetch(url, {method:"POST", mode:"no-cors", body:JSON.stringify(payload)});
+      const enriched = { ...payload, secret: API_SECRET };
+      // For admin operations, include the admin key
+      if (payload.type === "catalogo_update" && isAdmin) {
+        enriched.adminKey = ADMIN_KEYS[user.username.toLowerCase()] || "";
+      }
+      return await fetch(url, {method:"POST", mode:"no-cors", body:JSON.stringify(enriched)});
     } catch { return null; }
   };
 

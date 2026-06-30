@@ -976,6 +976,8 @@ function MainApp({ user, onLogout }) {
     if(weekStart!==monday){ weekStart=monday; weekCoinsEarned=0; }
 
     xp+=xpGain; totalXpEarned+=xpGain;
+    // Sumar caracolas (1:1 con XP ganado)
+    const caracolasGanadas = xpGain;
     let leveled=false;
     while(xp>=XP_FOR_LEVEL(level)){xp-=XP_FOR_LEVEL(level);level++;leveled=true;}
     totalDone++;
@@ -997,7 +999,9 @@ function MainApp({ user, onLogout }) {
 
     const newlyAvail=POKEMON.filter(p=>!caughtIds.includes(p.id)&&!p.evo&&prevTotal<p.xp&&totalXpEarned>=p.xp);
     const newP={xp,totalXpEarned,level,streak,totalDone,lastDate:today,badges:b,caughtIds,
-                coins,totalCoinsEarned,weekStart,weekCoinsEarned};
+                coins,totalCoinsEarned,weekStart,weekCoinsEarned,
+                caracolas:(player.caracolas||0)+caracolasGanadas,
+                totalCaracolasEarned:(player.totalCaracolasEarned||0)+caracolasGanadas};
 
     if(leveled)
       showToast(`¡Subiste al Nivel ${level}! ${LEVEL_TITLE(level)}`,"🆙");

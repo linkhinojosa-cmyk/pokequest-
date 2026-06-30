@@ -1408,18 +1408,14 @@ function MainApp({ user, onLogout }) {
   const availableList = POKEMON.filter(canCatch);
   const caughtList    = POKEMON.filter(p=>player.caughtIds.includes(p.id));
   const xpNeeded      = XP_FOR_LEVEL(player.level);
-  const todayStrForStats = TODAY();
-  const tasksForToday = tasks.filter(t => shouldShowToday(t, todayStrForStats));
-  const totalPct      = tasksForToday.length?Math.round(done.filter(id=>tasksForToday.find(t=>t.id===id)).length/tasksForToday.length*100):0;
-  const catStats=(cat)=>{const a=tasksForToday.filter(t=>t.category===cat);const c=a.filter(t=>done.includes(t.id));return{t:a.length,c:c.length,pct:a.length?Math.round(c.length/a.length*100):0};};
+const todayStr      = TODAY();
+  const visibleTasks  = tasks.filter(t => shouldShowToday(t, todayStr));
+  const totalPct      = visibleTasks.length?Math.round(done.filter(id=>visibleTasks.find(t=>t.id===id)).length/visibleTasks.length*100):0;
+  const catStats      = (cat)=>{const a=visibleTasks.filter(t=>t.category===cat);const c=a.filter(t=>done.includes(t.id));return{t:a.length,c:c.length,pct:a.length?Math.round(c.length/a.length*100):0};};
   const nextPoke      = POKEMON.filter(p=>!player.caughtIds.includes(p.id)&&p.xp>player.totalXpEarned&&(!p.evo||player.caughtIds.includes(p.evo))).sort((a,b)=>a.xp-b.xp)[0];
-  const todayStr = TODAY();
-  const visibleTasks = tasks.filter(t => shouldShowToday(t, todayStr));
-  const viewTasks = tab==="trabajo"
+  const viewTasks     = tab==="trabajo"
     ? visibleTasks.filter(t=>t.category==="trabajo" && t.sub===subTab)
     : visibleTasks.filter(t=>t.category===tab);
-  // Tasks that should appear today (for % calculation)
-  const todayTasks = visibleTasks;
   const pdList        = pdFilter==="available"?availableList:pdFilter==="caught"?caughtList:POKEMON;
 
   if(!ready) return(

@@ -1038,6 +1038,8 @@ function MainApp({ user, onLogout }) {
       coins: Math.max(0, (player.coins||0) - coinRefund),
       totalCoinsEarned: Math.max(0, (player.totalCoinsEarned||0) - coinRefund),
       weekCoinsEarned:  Math.max(0, (player.weekCoinsEarned||0)  - coinRefund),
+      caracolas: Math.max(0, (player.caracolas||0) - DIFF[task.difficulty].xp),
+      totalCaracolasEarned: Math.max(0, (player.totalCaracolasEarned||0) - DIFF[task.difficulty].xp),
     };
     setDone(newDone);setTodayXp(newTodayXp);setPlayer(newP);
     upsertDay(newDone,newP,newTodayXp);

@@ -1508,7 +1508,7 @@ const todayStr      = TODAY();
                 style={{width:`${Math.min(100,(player.xp/xpNeeded)*100)}%`,background:"linear-gradient(90deg,#7c3aed,#c084fc)"}}/>
             </div>
             <p className="text-xs mt-1" style={{color:"#94a3b8"}}>
-              XP total: {player.totalXpEarned.toLocaleString()}  ·  💰 {formatPesos(coinsToPesos(player.coins))}
+              XP total: {player.totalXpEarned.toLocaleString()}  ·  💰 {formatPesos(coinsToPesos(player.coins))}  ·  🐚 {(player.caracolas||0).toLocaleString()}
             </p>
           </div>
 
@@ -1549,7 +1549,7 @@ const todayStr      = TODAY();
                     style={{width:`${Math.min(100,(player.totalXpEarned/nextPoke.xp)*100)}%`,background:TC[nextPoke.type]}}/>
                 </div>
                 <p className="text-xs mt-1" style={{color:MUTED}}>
-                  {player.totalXpEarned} / {nextPoke.xp} XP
+                  🐚 {(player.caracolas||0).toLocaleString()} / {nextPoke.xp} caracolas
                 </p>
               </div>
             </div>
@@ -2114,13 +2114,13 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                 {!caught&&!avail&&(
                   <div style={{textAlign:"center",padding:"10px",marginBottom:12,borderRadius:12,background:CARD2}}>
                     <p style={{fontSize:12,color:MUTED}}>Necesitas</p>
-                    <p style={{fontSize:22,fontWeight:"black",color:"#f87171"}}>{xpLeft} XP más</p>
+                    <p style={{fontSize:22,fontWeight:"black",color:"#f87171"}}>🐚 {Math.max(0, p.xp-(player.caracolas||0))} más</p>
                     <div style={{height:6,borderRadius:99,background:"#1a1a38",margin:"8px 0 0"}}>
                       <div style={{height:"100%",borderRadius:99,background:"linear-gradient(90deg,#dc2626,#f87171)",
-                        width:`${Math.min(100,(player.totalXpEarned/p.xp)*100)}%`,transition:"width 0.5s"}}/>
+                        width:`${Math.min(100,((player.caracolas||0)/p.xp)*100)}%`,transition:"width 0.5s"}}/>
                     </div>
                     <p style={{fontSize:11,color:"#94a3b8",marginTop:4}}>
-                      {player.totalXpEarned} / {p.xp} XP
+                      🐚 {(player.caracolas||0).toLocaleString()} / {p.xp}
                     </p>
                   </div>
                 )}
@@ -2128,8 +2128,8 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                 {/* XP info */}
                 <div style={{display:"flex",gap:8,marginBottom:12}}>
                   <div style={{flex:1,padding:"8px 10px",borderRadius:10,background:CARD,textAlign:"center"}}>
-                    <p style={{fontSize:10,color:MUTED}}>XP necesario</p>
-                    <p style={{fontSize:14,fontWeight:"black",color:"#fbbf24"}}>{p.xp}</p>
+                    <p style={{fontSize:10,color:MUTED}}>Costo</p>
+                    <p style={{fontSize:14,fontWeight:"black",color:"#fbbf24"}}>🐚 {p.xp}</p>
                   </div>
                   {preEvo&&(
                     <div style={{flex:1,padding:"8px 10px",borderRadius:10,background:CARD,textAlign:"center"}}>

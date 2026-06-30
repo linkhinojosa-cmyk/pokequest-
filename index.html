@@ -1050,13 +1050,14 @@ function MainApp({ user, onLogout }) {
   // ── Pokémon catch ───────────────────────────────────────────────────────────
   const canCatch=(poke)=>{
     if(player.caughtIds.includes(poke.id))return false;
-    if(player.totalXpEarned<poke.xp)return false;
+    if((player.caracolas||0)<poke.xp)return false;
     if(poke.evo&&!player.caughtIds.includes(poke.evo))return false;
     return true;
   };
 
-  const catchPokemon=(poke)=>{
+    const catchPokemon=(poke)=>{
     if(!canCatch(poke))return;
+    if(!window.confirm(`¿Atrapar a ${poke.name} por 🐚 ${poke.xp} caracolas?\n\nTienes 🐚 ${player.caracolas||0}, te quedarán 🐚 ${(player.caracolas||0)-poke.xp}.`))return;
     const newCaught=[...player.caughtIds,poke.id];
     const b=[...player.badges];
     const earn=(id)=>{if(!b.includes(id))b.push(id);};
@@ -1072,7 +1073,8 @@ function MainApp({ user, onLogout }) {
     if(newCaught.length===151)      earn("pokedex");
 
     const newBadges=b.filter(id=>!player.badges.includes(id));
-    const updatedPlayer = {...player, caughtIds:newCaught, badges:b};
+    const updatedPlayer = {...player, caughtIds:newCaught, badges:b,
+      caracolas: Math.max(0, (player.caracolas||0) - poke.xp)};
     setPlayer(updatedPlayer);
     upsertDay(done, updatedPlayer, todayXp);
     pushPokemon(poke.id);

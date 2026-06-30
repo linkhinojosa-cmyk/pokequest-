@@ -780,6 +780,17 @@ function MainApp({ user, onLogout }) {
           if(typeof p.totalCoinsEarned!=="number") p.totalCoinsEarned=0;
           if(typeof p.weekCoinsEarned!=="number")  p.weekCoinsEarned=0;
           if(typeof p.gastosTotal!=="number")      p.gastosTotal=0;
+          // ── Migración suave: caracolas ──
+          // Si ya tienes Pokémon atrapados sin haber gastado caracolas, descontamos.
+          if(typeof p.caracolas!=="number" || typeof p.totalCaracolasEarned!=="number"){
+            const xpGastadoEnPokemon = (p.caughtIds||[]).reduce((sum,id)=>{
+              const poke = POKEMON.find(x=>x.id===id);
+              return sum + (poke?poke.xp:0);
+            },0);
+            p.totalCaracolasEarned = p.totalXpEarned || 0;
+            p.caracolas = Math.max(0, (p.totalXpEarned||0) - xpGastadoEnPokemon);
+            console.log("Migración caracolas:", {totalGanado:p.totalCaracolasEarned, gastado:xpGastadoEnPokemon, saldo:p.caracolas});
+          }
           if(typeof p.gastosStreakDays!=="number")  p.gastosStreakDays=0;
           if(!p.gastosLastDate)                    p.gastosLastDate=null;
           // Resetear gastos de hoy si cambió el día

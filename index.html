@@ -746,6 +746,9 @@ function MainApp({ user, onLogout }) {
   const [xpLostYesterday, setXpLostYesterday] = useState(0); // XP lost from missed tasks
   const [newT,       setNewT]       = useState({name:"",category:"personal",difficulty:"easy",icon:"✅",sub:"uber",frequency:"daily",freqConfig:null});
   // Bottom sheet para editar tareas (long-press en modo Editar)
+  // Modal de confirmación gamificado (reemplaza window.confirm)
+  const [confirmModal, setConfirmModal] = useState(null);
+  // Estructura: {title, subtitle, icon, accent, glow, details:[{label,value,color}], confirmText, onConfirm}
   const [sheetTask,  setSheetTask]  = useState(null);     // La tarea sobre la cual actuar
   const [sheetView,  setSheetView]  = useState("menu");   // menu | edit | move | freq
   const [editForm,   setEditForm]   = useState({name:"",icon:"",difficulty:"easy"});

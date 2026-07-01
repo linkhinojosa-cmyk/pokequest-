@@ -746,6 +746,10 @@ function MainApp({ user, onLogout }) {
   const [xpLostYesterday, setXpLostYesterday] = useState(0); // XP lost from missed tasks
   const [newT,       setNewT]       = useState({name:"",category:"personal",difficulty:"easy",icon:"✅",sub:"uber",frequency:"daily",freqConfig:null});
   // Bottom sheet para editar tareas (long-press en modo Editar)
+  // Modo reordenar: activado desde el botón "🔀 Reordenar"
+  const [reorderMode, setReorderMode] = useState(false);
+  const [draggedId,   setDraggedId]   = useState(null);
+  const [dragOverId,  setDragOverId]  = useState(null);
   // Modal de confirmación gamificado (reemplaza window.confirm)
   const [confirmModal, setConfirmModal] = useState(null);
   // Estructura: {title, subtitle, icon, accent, glow, details:[{label,value,color}], confirmText, onConfirm}

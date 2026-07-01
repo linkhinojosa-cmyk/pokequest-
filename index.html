@@ -2297,7 +2297,10 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                               transition:"transform 0.15s, background 0.15s",
                               boxShadow:isDragOver?"0 0 12px #3b82f640":"none",
                               touchAction:reorderMode?"none":"auto",
-                              userSelect:"none"
+                              userSelect:"none",
+                              WebkitUserSelect:"none",
+                              WebkitTouchCallout:"none",
+                              WebkitTapHighlightColor:"transparent"
                             }}>
                             {reorderMode&&(
                               <span style={{color:"#3b82f6",fontSize:16,marginRight:2}}>⋮⋮</span>

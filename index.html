@@ -760,10 +760,12 @@ function MainApp({ user, onLogout }) {
   // Inject keyframes
   useEffect(()=>{
     const s=document.createElement("style");
-    s.innerHTML=`
+s.innerHTML=`
       @keyframes pkPulse{0%,100%{opacity:.7}50%{opacity:1}}
       @keyframes pkCatch{0%{transform:scale(1)}40%{transform:scale(1.2)}70%{transform:scale(.9)}100%{transform:scale(1)}}
       @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+      @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+      @keyframes modalPop{0%{transform:scale(0.85);opacity:0}60%{transform:scale(1.03)}100%{transform:scale(1);opacity:1}}
     `;
     document.head.appendChild(s);
     return()=>document.head.removeChild(s);
@@ -1064,9 +1066,22 @@ function MainApp({ user, onLogout }) {
     return true;
   };
 
-    const catchPokemon=(poke)=>{
+    const catchPokemon=async(poke)=>{
     if(!canCatch(poke))return;
-    if(!window.confirm(`¿Atrapar a ${poke.name} por 🐚 ${poke.xp} caracolas?\n\nTienes 🐚 ${player.caracolas||0}, te quedarán 🐚 ${(player.caracolas||0)-poke.xp}.`))return;
+    const ok = await askConfirm({
+      title: `¿Atrapar a ${poke.name}?`,
+      subtitle: `Estás a punto de gastar caracolas para agregarlo a tu Pokédex.`,
+      icon: "🐚",
+      accent: "#0891b2",
+      glow: "#22d3ee",
+      details: [
+        {label:"Costo",       value:`🐚 ${poke.xp.toLocaleString()}`,                    color:"#f87171"},
+        {label:"Tu saldo",    value:`🐚 ${(player.caracolas||0).toLocaleString()}`,      color:"#22d3ee"},
+        {label:"Te quedarán", value:`🐚 ${((player.caracolas||0)-poke.xp).toLocaleString()}`, color:"#4ade80"},
+      ],
+      confirmText: "¡Atrapar!",
+    });
+    if(!ok) return;
     const newCaught=[...player.caughtIds,poke.id];
     const b=[...player.badges];
     const earn=(id)=>{if(!b.includes(id))b.push(id);};

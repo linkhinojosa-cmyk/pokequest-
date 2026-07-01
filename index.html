@@ -1569,119 +1569,55 @@ const deleteFromSheet = async () => {
     catalogo: list.map(c=>({id:c.id, name:c.name, icon:c.icon, costPesos:c.costPesos}))
   });
 
-  const syncToGoogleSheets = async () => {
-    const url = await getScriptUrl();
+ const syncToGoogleSheets = async () => {
     try {
-      showToast("☁️ Subiendo cambios locales...","⏳");
+      showToast("☁️ Trayendo datos del Sheet...","⏳");
 
-      // ═══════ FASE 1: PUSH (sube todo lo local al Sheet) ═══════
-
-      // Estado del jugador
-      await pushEstado(player);
-
-      // Todas mis tareas (por si modifiqué offline)
-      await pushTareasFull(tasks);
-
-      // Pokemon capturados
-      for (const pid of player.caughtIds) {
-        await postToScript(url, {
-          type:"pokedex_add",
-          usuario: user.displayName,
-          pokemon_id: pid,
-          fecha_captura: TODAY(),
-          secret: API_SECRET,
-        });
-      }
-
-      // Tareas completadas hoy
-      for (const tid of done) {
-        await postToScript(url, {
-          type:"tarea_completada",
-          usuario: user.displayName,
-          fecha: TODAY(),
-          task_id: tid,
-          secret: API_SECRET,
-        });
-      }
-
-      // Historial diario
-      const sorted=[...dailyStats].sort((a,b)=>a.fecha.localeCompare(b.fecha));
-      let dCount=0;
-      for(const s of sorted){
-        await postToScript(url, {
-          type:"diario",
-          usuario: user.displayName,
-          fecha:   s.fecha,
-          xp:      s.xp,
-          nivel:   s.nivel,
-          racha:   s.racha,
-          pct:     s.pct,
-          completadas: s.completadas,
-          capturados:  s.capturados||0,
-          monedas_balance: s.monedas||0,
-          pesos_balance:   s.pesos||0,
-          secret: API_SECRET,
-        });
-        dCount++;
-      }
-
-      // Canjes
-      let cCount=0;
-      for(const rd of redemptions){
-        await postToScript(url, {
-          type:"canje",
-          id:    rd.id,
-          usuario: user.displayName,
-          fecha: rd.date,
-          recompensa: rd.rewardName,
-          icono: rd.rewardIcon,
-          monedas: rd.costCoins,
-          pesos:   coinsToPesos(rd.costCoins),
-          secret: API_SECRET,
-        });
-        cCount++;
-      }
-
-      // Recompensas personales
-      await postToScript(url, {
-        type:"recompensas",
-        usuario: user.displayName,
-        rewards: rewards.map(rw=>({
-          id: rw.id, nombre: rw.name, icono: rw.icon,
-          monedas: rw.costCoins, pesos: coinsToPesos(rw.costCoins),
-        })),
-        secret: API_SECRET,
-      });
-
-      showToast("☁️ Descargando última versión...","⏳");
-
-      // ═══════ FASE 2: PULL (baja todo del Sheet y reemplaza local) ═══════
-
+      // Solo PULL: descarga todo del Sheet y reemplaza lo local.
+      // Nunca sube (los cambios suben solos al crear/completar/gastar).
       const data = await cloudGet("load", {usuario: user.displayName});
 
-      if (data && data.ok) {
-        // Reemplazar tareas con lo que hay en el Sheet
-        if (data.tareas && data.tareas.length > 0) {
-          setTasks(data.tareas);
-        }
-
-        // Reemplazar tareas completadas de hoy
-        if (data.tareasCompletadas) {
-          const today = TODAY();
-          const todayIds = data.tareasCompletadas
-            .filter(tc => tc.fecha === today)
-            .map(tc => tc.task_id);
-          setDone(todayIds);
-        }
-
-        // Reemplazar catálogo, canjes, recompensas
-        if (data.catalogo) setCatalogo(data.catalogo);
-        if (data.canjes) setRedemptions(data.canjes);
-        if (data.recompensas) setRewards(data.recompensas);
-        if (data.diario) setDailyStats(data.diario);
+      if (!data || !data.ok) {
+        showToast("No se pudo conectar. Revisa tu internet.","⚠️");
+        return;
       }
 
-      showToast(`✅ Sincronización completa · ${dCount} días, ${cCount} canjes`,"🔄");
+      // Reemplazar estado del jugador
+      if (data.estado) {
+        const e = data.estado;
+        setPlayer(prev => ({
+          ...prev,
+          level: e.level, xp: e.xp, totalXpEarned: e.totalXpEarned,
+          streak: e.streak, totalDone: e.totalDone, lastDate: e.lastDate,
+          badges: e.badges || [], caughtIds: data.pokedex || prev.caughtIds,
+          coins: e.coins, totalCoinsEarned: e.totalCoinsEarned,
+          weekStart: e.weekStart, weekCoinsEarned: e.weekCoinsEarned,
+          gastosTotal: e.gastosTotal, gastosStreakDays: e.gastosStreakDays,
+          gastosLastDate: e.gastosLastDate, gastosHoy: e.gastosHoy,
+        }));
+      }
+
+      // Reemplazar tareas
+      if (data.tareas && data.tareas.length > 0) {
+        setTasks(data.tareas);
+      }
+
+      // Reemplazar tareas completadas de hoy
+      if (data.tareasCompletadas) {
+        const today = TODAY();
+        const todayIds = data.tareasCompletadas
+          .filter(tc => tc.fecha === today)
+          .map(tc => tc.task_id);
+        setDone(todayIds);
+      }
+
+      // Reemplazar catálogo, canjes, recompensas, historial
+      if (data.catalogo)     setCatalogo(data.catalogo);
+      if (data.canjes)       setRedemptions(data.canjes);
+      if (data.recompensas)  setRewards(data.recompensas);
+      if (data.diario)       setDailyStats(data.diario);
+
+      showToast("✅ Datos actualizados desde el Sheet","🔄");
     } catch(err) {
       showToast("Error al sincronizar","⚠️");
       console.error("Sync error:", err);

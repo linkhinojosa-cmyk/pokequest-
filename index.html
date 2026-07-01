@@ -2455,7 +2455,9 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
               style={{background:"linear-gradient(180deg,#0f1520,#0a0d18)",
                 border:`2px solid ${accent}`,
                 boxShadow:`0 0 40px ${glow}50, inset 0 0 20px ${accent}15`,
-                animation:"modalPop 0.3s ease-out"}}
+                animation:"modalPop 0.3s ease-out",
+                userSelect:"none",WebkitUserSelect:"none",
+                WebkitTouchCallout:"none",WebkitTapHighlightColor:"transparent"}}
               onClick={e=>e.stopPropagation()}>
 
               {/* Glowing top strip */}
@@ -2524,7 +2526,9 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
               style={{background:"linear-gradient(180deg,#0f1520,#0a0d18)",
                 border:`1px solid ${cat.accent}60`,borderBottom:"none",
                 maxHeight:"88vh",animation:"slideUp 0.28s ease-out",
-                boxShadow:`0 -10px 40px ${cat.accent}30`}}
+                boxShadow:`0 -10px 40px ${cat.accent}30`,
+                userSelect:"none",WebkitUserSelect:"none",
+                WebkitTouchCallout:"none",WebkitTapHighlightColor:"transparent"}}
               onClick={e=>e.stopPropagation()}>
 
               {/* Drag handle */}
@@ -2606,14 +2610,14 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                       Nombre
                     </label>
                     <input value={editForm.name} onChange={e=>setEditForm(p=>({...p,name:e.target.value}))}
-                      style={{...inp,width:"100%"}}/>
+                      style={{...inp,width:"100%",userSelect:"text",WebkitUserSelect:"text"}}/>
                   </div>
                   <div>
                     <label style={{fontSize:11,color:MUTED,fontWeight:"bold",display:"block",marginBottom:6,textTransform:"uppercase",letterSpacing:1.5}}>
                       Icono
                     </label>
                     <input value={editForm.icon} onChange={e=>setEditForm(p=>({...p,icon:e.target.value}))}
-                      maxLength={2} style={{...inp,width:80,textAlign:"center",fontSize:24}}/>
+                      maxLength={2} style={{...inp,width:80,textAlign:"center",fontSize:24,userSelect:"text",WebkitUserSelect:"text"}}/>
                   </div>
                   <div>
                     <label style={{fontSize:11,color:MUTED,fontWeight:"bold",display:"block",marginBottom:6,textTransform:"uppercase",letterSpacing:1.5}}>

@@ -745,6 +745,12 @@ function MainApp({ user, onLogout }) {
   const [missedYesterday, setMissedYesterday] = useState([]); // task IDs not done yesterday
   const [xpLostYesterday, setXpLostYesterday] = useState(0); // XP lost from missed tasks
   const [newT,       setNewT]       = useState({name:"",category:"personal",difficulty:"easy",icon:"✅",sub:"uber",frequency:"daily",freqConfig:null});
+  // Bottom sheet para editar tareas (long-press en modo Editar)
+  const [sheetTask,  setSheetTask]  = useState(null);     // La tarea sobre la cual actuar
+  const [sheetView,  setSheetView]  = useState("menu");   // menu | edit | move | freq
+  const [editForm,   setEditForm]   = useState({name:"",icon:"",difficulty:"easy"});
+  const [freqForm,   setFreqForm]   = useState({frequency:"daily",freqConfig:null});
+  const longPressRef = useRef(null);
   const toastRef = useRef(null);
   const xpRef    = useRef(null);
 

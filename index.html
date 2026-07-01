@@ -2212,7 +2212,7 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
               </div>
 
               {Object.entries(CATS).map(([cat,catInfo])=>{
-                const ct=tasks.filter(t=>t.category===cat);if(!ct.length)return null;
+                const ct=tasks.filter(t=>t.category===cat).sort((a,b)=>(a.order||0)-(b.order||0));if(!ct.length)return null;
                 return(
                   <div key={cat} className="mb-4">
                     <div className="flex items-center gap-2 mb-2">

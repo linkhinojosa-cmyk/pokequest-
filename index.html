@@ -2259,21 +2259,32 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                         const isDragOver = reorderMode && dragOverId === task.id;
                         return(
                           <div key={task.id} className="rounded-xl flex items-center gap-2.5 px-3 py-2.5"
-                            draggable={reorderMode}
-                            onDragStart={reorderMode?()=>handleDragStart(task.id):undefined}
-                            onDragOver={reorderMode?(e)=>{e.preventDefault();handleDragOver(task.id);}:undefined}
-                            onDragEnd={reorderMode?handleDragEnd:undefined}
-                            onDrop={reorderMode?(e)=>{e.preventDefault();handleDragEnd();}:undefined}
-                            onTouchStart={reorderMode?()=>handleDragStart(task.id):()=>startLongPress(task)}
-                            onTouchEnd={reorderMode?handleDragEnd:cancelLongPress}
+                            onTouchStart={reorderMode?(e)=>{
+                              if (navigator.vibrate) navigator.vibrate(20);
+                              handleDragStart(task.id);
+                            }:()=>startLongPress(task)}
                             onTouchMove={reorderMode?(e)=>{
+                              e.preventDefault();
                               const touch = e.touches[0];
                               const el = document.elementFromPoint(touch.clientX, touch.clientY);
                               const card = el?.closest('[data-task-id]');
-                              if (card) handleDragOver(card.getAttribute('data-task-id'));
+                              if (card) {
+                                const targetId = card.getAttribute('data-task-id');
+                                if (targetId !== dragOverId) handleDragOver(targetId);
+                              }
                             }:cancelLongPress}
-                            onMouseDown={reorderMode?undefined:()=>startLongPress(task)}
-                            onMouseUp={reorderMode?undefined:cancelLongPress}
+                            onTouchEnd={reorderMode?handleDragEnd:cancelLongPress}
+                            onTouchCancel={reorderMode?handleDragEnd:cancelLongPress}
+                            onMouseDown={reorderMode?()=>handleDragStart(task.id):()=>startLongPress(task)}
+                            onMouseMove={reorderMode&&draggedId?(e)=>{
+                              const el = document.elementFromPoint(e.clientX, e.clientY);
+                              const card = el?.closest('[data-task-id]');
+                              if (card) {
+                                const targetId = card.getAttribute('data-task-id');
+                                if (targetId !== dragOverId) handleDragOver(targetId);
+                              }
+                            }:undefined}
+                            onMouseUp={reorderMode?handleDragEnd:cancelLongPress}
                             onMouseLeave={reorderMode?undefined:cancelLongPress}
                             data-task-id={task.id}
                             style={{
@@ -2284,7 +2295,9 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                               cursor:reorderMode?"grab":"pointer",
                               transform:isDragged?"scale(0.97)":"scale(1)",
                               transition:"transform 0.15s, background 0.15s",
-                              boxShadow:isDragOver?"0 0 12px #3b82f640":"none"
+                              boxShadow:isDragOver?"0 0 12px #3b82f640":"none",
+                              touchAction:reorderMode?"none":"auto",
+                              userSelect:"none"
                             }}>
                             {reorderMode&&(
                               <span style={{color:"#3b82f6",fontSize:16,marginRight:2}}>⋮⋮</span>

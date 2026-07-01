@@ -760,7 +760,43 @@ function MainApp({ user, onLogout }) {
   const longPressRef = useRef(null);
   const toastRef = useRef(null);
   const xpRef    = useRef(null);
+// ── Interceptar botón atrás del sistema (Android/iOS/PWA) ──────────────────
+  useEffect(()=>{
+    // Al montar, agregamos una entrada extra al historial para poder "atrasar"
+    // sin salir de la app. Esto se hace UNA sola vez al abrir la app.
+    window.history.pushState({pokequest:true}, "");
 
+    const handleBack = (e) => {
+      // Prioridad: si algún modal/sheet está abierto, ciérralo primero
+      if (confirmModal) {
+        confirmModal.onCancel();
+        window.history.pushState({pokequest:true}, "");
+        return;
+      }
+      if (sheetTask) {
+        closeSheet();
+        window.history.pushState({pokequest:true}, "");
+        return;
+      }
+      if (reorderMode) {
+        exitReorderMode();
+        window.history.pushState({pokequest:true}, "");
+        return;
+      }
+      // Si estamos en una tab que no es la principal, ir a la principal
+      if (screen !== "misiones") {
+        setScreen("misiones");
+        window.history.pushState({pokequest:true}, "");
+        return;
+      }
+      // Si estamos en la principal, agregamos otra entrada para que
+      // el próximo back también sea interceptado (evita salir accidentalmente)
+      window.history.pushState({pokequest:true}, "");
+    };
+
+    window.addEventListener("popstate", handleBack);
+    return () => window.removeEventListener("popstate", handleBack);
+  }, [confirmModal, sheetTask, reorderMode, screen]);
   // Inject keyframes
   useEffect(()=>{
     const s=document.createElement("style");

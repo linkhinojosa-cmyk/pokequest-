@@ -1316,10 +1316,41 @@ function MainApp({ user, onLogout }) {
   const syncToGoogleSheets = async () => {
     const url = await getScriptUrl();
     try {
-      let dCount=0, cCount=0;
+      showToast("☁️ Subiendo cambios locales...","⏳");
 
-      // 1. Daily stats — upsert each day
+      // ═══════ FASE 1: PUSH (sube todo lo local al Sheet) ═══════
+
+      // Estado del jugador
+      await pushEstado(player);
+
+      // Todas mis tareas (por si modifiqué offline)
+      await pushTareasFull(tasks);
+
+      // Pokemon capturados
+      for (const pid of player.caughtIds) {
+        await postToScript(url, {
+          type:"pokedex_add",
+          usuario: user.displayName,
+          pokemon_id: pid,
+          fecha_captura: TODAY(),
+          secret: API_SECRET,
+        });
+      }
+
+      // Tareas completadas hoy
+      for (const tid of done) {
+        await postToScript(url, {
+          type:"tarea_completada",
+          usuario: user.displayName,
+          fecha: TODAY(),
+          task_id: tid,
+          secret: API_SECRET,
+        });
+      }
+
+      // Historial diario
       const sorted=[...dailyStats].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+      let dCount=0;
       for(const s of sorted){
         await postToScript(url, {
           type:"diario",
@@ -1333,11 +1364,13 @@ function MainApp({ user, onLogout }) {
           capturados:  s.capturados||0,
           monedas_balance: s.monedas||0,
           pesos_balance:   s.pesos||0,
+          secret: API_SECRET,
         });
         dCount++;
       }
 
-      // 2. Redemptions — append each (Apps Script dedupes by id)
+      // Canjes
+      let cCount=0;
       for(const rd of redemptions){
         await postToScript(url, {
           type:"canje",
@@ -1348,11 +1381,12 @@ function MainApp({ user, onLogout }) {
           icono: rd.rewardIcon,
           monedas: rd.costCoins,
           pesos:   coinsToPesos(rd.costCoins),
+          secret: API_SECRET,
         });
         cCount++;
       }
 
-      // 3. Recompensas — sync full catalog (Apps Script wipes & re-adds)
+      // Recompensas personales
       await postToScript(url, {
         type:"recompensas",
         usuario: user.displayName,
@@ -1360,14 +1394,43 @@ function MainApp({ user, onLogout }) {
           id: rw.id, nombre: rw.name, icono: rw.icon,
           monedas: rw.costCoins, pesos: coinsToPesos(rw.costCoins),
         })),
+        secret: API_SECRET,
       });
 
-      showToast(`☁️ Sincronizado · ${dCount} días, ${cCount} canjes, ${rewards.length} recompensas`,"✅");
+      showToast("☁️ Descargando última versión...","⏳");
+
+      // ═══════ FASE 2: PULL (baja todo del Sheet y reemplaza local) ═══════
+
+      const data = await cloudGet("load", {usuario: user.displayName});
+
+      if (data && data.ok) {
+        // Reemplazar tareas con lo que hay en el Sheet
+        if (data.tareas && data.tareas.length > 0) {
+          setTasks(data.tareas);
+        }
+
+        // Reemplazar tareas completadas de hoy
+        if (data.tareasCompletadas) {
+          const today = TODAY();
+          const todayIds = data.tareasCompletadas
+            .filter(tc => tc.fecha === today)
+            .map(tc => tc.task_id);
+          setDone(todayIds);
+        }
+
+        // Reemplazar catálogo, canjes, recompensas
+        if (data.catalogo) setCatalogo(data.catalogo);
+        if (data.canjes) setRedemptions(data.canjes);
+        if (data.recompensas) setRewards(data.recompensas);
+        if (data.diario) setDailyStats(data.diario);
+      }
+
+      showToast(`✅ Sincronización completa · ${dCount} días, ${cCount} canjes`,"🔄");
     } catch(err) {
       showToast("Error al sincronizar","⚠️");
+      console.error("Sync error:", err);
     }
   };
-
   // Auto-send a single redemption right after it happens (best effort)
   const autoSyncCanje = async (rd) => {
     try{

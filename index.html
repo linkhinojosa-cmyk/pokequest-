@@ -2883,7 +2883,21 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                               color:canAfford?"#000":"#4b5563"}}>
                             Canjear
                           </button>
-                          <button onClick={()=>{ if(window.confirm("¿Eliminar?")) deleteReward(r.id); }}
+                          <button onClick={async()=>{
+                            const ok = await askConfirm({
+                              title: "¿Eliminar recompensa?",
+                              subtitle: "Solo se elimina de tus recompensas personales.",
+                              icon: r.icon || "🗑️",
+                              accent: "#dc2626",
+                              glow: "#f87171",
+                              details: [
+                                {label:"Recompensa", value: r.name, color:"#f87171"},
+                                {label:"Costo",      value: formatPesos(coinsToPesos(r.costCoins)), color:"#fbbf24"},
+                              ],
+                              confirmText: "Eliminar",
+                            });
+                            if(ok) deleteReward(r.id);
+                          }}
                             style={{padding:"6px 8px",borderRadius:10,fontSize:11,
                               border:"none",cursor:"pointer",background:"#1f0707",color:"#ef4444"}}>
                             ✕

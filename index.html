@@ -2089,6 +2089,39 @@ const todayStr      = TODAY();
                   💡 Mantén pulsada una misión para editar, mover o eliminar
                 </p>
               </div>
+              {!reorderMode&&(
+                <div className="flex gap-2 mb-3">
+                  <button onClick={enterReorderMode}
+                    className="flex-1 rounded-xl py-2.5 text-xs font-black transition-all"
+                    style={{background:"linear-gradient(135deg,#0d1a3a,#1e3a5f)",
+                      border:"1px solid #3b82f6",color:"#60a5fa",cursor:"pointer"}}>
+                    🔀 Reordenar
+                  </button>
+                  <button onClick={()=>sortTasks("alpha")}
+                    className="flex-1 rounded-xl py-2.5 text-xs font-black transition-all"
+                    style={{background:CARD,border:`1px solid ${BORD}`,color:MUTED,cursor:"pointer"}}>
+                    🔤 A-Z
+                  </button>
+                  <button onClick={()=>sortTasks("difficulty")}
+                    className="flex-1 rounded-xl py-2.5 text-xs font-black transition-all"
+                    style={{background:CARD,border:`1px solid ${BORD}`,color:MUTED,cursor:"pointer"}}>
+                    ⚡ Dificultad
+                  </button>
+                </div>
+              )}
+              {reorderMode&&(
+                <div className="rounded-xl p-3 mb-3 flex items-center gap-3" style={{background:"linear-gradient(135deg,#0d1a3a,#1e3a5f)",border:"1px solid #3b82f6"}}>
+                  <div style={{flex:1}}>
+                    <p style={{fontSize:12,color:"#60a5fa",fontWeight:"black"}}>🔀 Modo reordenar</p>
+                    <p style={{fontSize:10,color:MUTED,marginTop:2}}>Arrastra las misiones dentro de su categoría</p>
+                  </div>
+                  <button onClick={exitReorderMode}
+                    className="rounded-xl px-4 py-2 text-xs font-black"
+                    style={{background:"linear-gradient(135deg,#166534,#10b981)",color:"#fff",border:"none",cursor:"pointer",boxShadow:"0 0 12px #10b98150"}}>
+                    ✓ Listo
+                  </button>
+                </div>
+              )}
               <div className="rounded-2xl p-4 mb-5 space-y-2.5" style={{background:CARD,border:"1px solid #1a3a2a"}}>
                 <p className="text-xs font-black uppercase tracking-widest" style={{color:"#4ade80"}}>+ Nueva misión</p>
                 <div className="flex gap-2">

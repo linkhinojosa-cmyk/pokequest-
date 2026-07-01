@@ -1113,6 +1113,16 @@ function MainApp({ user, onLogout }) {
     setSheetTask(null);
     setSheetView("menu");
   };
+  // Helper para abrir el modal gamificado
+  const askConfirm = (config) => {
+    return new Promise(resolve => {
+      setConfirmModal({
+        ...config,
+        onConfirm: () => { setConfirmModal(null); resolve(true); },
+        onCancel:  () => { setConfirmModal(null); resolve(false); },
+      });
+    });
+  };
   const startLongPress = (task) => {
     clearTimeout(longPressRef.current);
     longPressRef.current = setTimeout(()=>openSheet(task), 500);

@@ -780,9 +780,20 @@ s.innerHTML=`
     (async()=>{
       const today=TODAY();
 
-      // Load tasks first so we can compare with yesterday's done list
+// Load tasks first so we can compare with yesterday's done list
       let loadedTasks = DEFAULT_TASKS;
-      try{const r=await _store.get(`pq-${user.username}-tasks`); if(r){loadedTasks=JSON.parse(r.value);setTasks(loadedTasks);}}catch{}
+      try{
+        const r=await _store.get(`pq-${user.username}-tasks`);
+        if(r){
+          loadedTasks=JSON.parse(r.value);
+          // Migración: agregar campo 'order' a tareas viejas que no lo tengan
+          const needsOrder = loadedTasks.some(t => typeof t.order !== "number");
+          if (needsOrder) {
+            loadedTasks = loadedTasks.map((t, i) => ({...t, order: typeof t.order === "number" ? t.order : i}));
+          }
+          setTasks(loadedTasks);
+        }
+      }catch{}
 
       try{
         const r=await _store.get(`pq-${user.username}-player`);

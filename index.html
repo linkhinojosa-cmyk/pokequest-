@@ -1098,7 +1098,62 @@ function MainApp({ user, onLogout }) {
     setTasks(list); setDone(prev=>prev.filter(d=>d!==id));
     pushTareasFull(list);
   };
+// ── Bottom sheet: abrir con long press ─────────────────────────────────────
+  const openSheet = (task) => {
+    if (navigator.vibrate) navigator.vibrate(30);
+    setSheetTask(task);
+    setSheetView("menu");
+    setEditForm({name:task.name, icon:task.icon, difficulty:task.difficulty});
+    setFreqForm({frequency:task.frequency||"daily", freqConfig:task.freqConfig||null});
+  };
+  const closeSheet = () => {
+    setSheetTask(null);
+    setSheetView("menu");
+  };
+  const startLongPress = (task) => {
+    clearTimeout(longPressRef.current);
+    longPressRef.current = setTimeout(()=>openSheet(task), 500);
+  };
+  const cancelLongPress = () => {
+    clearTimeout(longPressRef.current);
+  };
 
+  // ── Bottom sheet: guardar cambios ──────────────────────────────────────────
+  const saveEdit = () => {
+    if(!editForm.name.trim()){showToast("Ingresa un nombre","⚠️");return;}
+    const list = tasks.map(t => t.id === sheetTask.id
+      ? {...t, name:editForm.name.trim(), icon:editForm.icon||"✅", difficulty:editForm.difficulty}
+      : t);
+    setTasks(list); pushTareasFull(list);
+    showToast("¡Misión actualizada!","✏️");
+    closeSheet();
+  };
+  const moveCategory = (newCategory, newSub) => {
+    const list = tasks.map(t => {
+      if (t.id !== sheetTask.id) return t;
+      const updated = {...t, category:newCategory};
+      if (newCategory === "trabajo") updated.sub = newSub;
+      else delete updated.sub;
+      return updated;
+    });
+    setTasks(list); pushTareasFull(list);
+    showToast(`Movida a ${newCategory}`,"📁");
+    closeSheet();
+  };
+  const saveFreq = () => {
+    const list = tasks.map(t => t.id === sheetTask.id
+      ? {...t, frequency:freqForm.frequency, freqConfig:freqForm.freqConfig}
+      : t);
+    setTasks(list); pushTareasFull(list);
+    showToast("Frecuencia actualizada","🔄");
+    closeSheet();
+  };
+  const deleteFromSheet = () => {
+    if(!window.confirm(`¿Eliminar "${sheetTask.name}" permanentemente?`)) return;
+    deleteTask(sheetTask.id);
+    showToast("Misión eliminada","🗑️");
+    closeSheet();
+  };
   // ── Reward shop ───────────────────────────────────────────────────────────
   const addReward = () => {
     const pesos = parseInt(String(newReward.costPesos).replace(/[^\d]/g,""),10);

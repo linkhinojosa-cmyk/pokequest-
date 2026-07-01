@@ -784,8 +784,8 @@ function MainApp({ user, onLogout }) {
         return;
       }
       // Si estamos en una tab que no es la principal, ir a la principal
-      if (screen !== "misiones") {
-        setScreen("misiones");
+      if (screen !== "play") {
+        setScreen("play");
         window.history.pushState({pokequest:true}, "");
         return;
       }

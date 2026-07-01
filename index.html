@@ -1219,12 +1219,27 @@ s.innerHTML=`
     const list=catalogo.filter(c=>c.id!==id);
     setCatalogo(list); pushCatalogo(list);
   };
-  const redeem = (reward) => {
+  const redeem = async (reward) => {
     if((player.coins||0) < reward.costCoins){
       showToast("No tienes monedas suficientes","⚠️"); return;
     }
     const pesos = coinsToPesos(reward.costCoins);
-    if(!window.confirm(`¿Canjear "${reward.name}" por ${formatPesos(pesos)}?`)) return;
+    const remainingCoins = (player.coins||0) - reward.costCoins;
+    const remainingPesos = coinsToPesos(remainingCoins);
+    const ok = await askConfirm({
+      title: `¿Canjear "${reward.name}"?`,
+      subtitle: `Este canje descontará monedas de tu saldo.`,
+      icon: reward.icon || "🎁",
+      accent: "#d97706",
+      glow: "#fbbf24",
+      details: [
+        {label:"Costo",       value: formatPesos(pesos),          color:"#f87171"},
+        {label:"Tu saldo",    value: formatPesos(coinsToPesos(player.coins||0)), color:"#fbbf24"},
+        {label:"Te quedarán", value: formatPesos(remainingPesos), color:"#4ade80"},
+      ],
+      confirmText: "¡Canjear!",
+    });
+    if(!ok) return;
     const newPlayer = {...player, coins: player.coins - reward.costCoins};
     setPlayer(newPlayer);
     const newRd = {

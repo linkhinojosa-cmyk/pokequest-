@@ -1176,8 +1176,20 @@ s.innerHTML=`
     showToast("Frecuencia actualizada","🔄");
     closeSheet();
   };
-  const deleteFromSheet = () => {
-    if(!window.confirm(`¿Eliminar "${sheetTask.name}" permanentemente?`)) return;
+const deleteFromSheet = async () => {
+    const ok = await askConfirm({
+      title: `¿Eliminar "${sheetTask.name}"?`,
+      subtitle: "Esta acción es permanente y no se puede deshacer.",
+      icon: sheetTask.icon || "🗑️",
+      accent: "#dc2626",
+      glow: "#f87171",
+      details: [
+        {label:"Categoría",  value: CATS[sheetTask.category].label, color:"#f87171"},
+        {label:"Dificultad", value: DIFF[sheetTask.difficulty].label, color:DIFF[sheetTask.difficulty].color},
+      ],
+      confirmText: "Eliminar",
+    });
+    if(!ok) return;
     deleteTask(sheetTask.id);
     showToast("Misión eliminada","🗑️");
     closeSheet();

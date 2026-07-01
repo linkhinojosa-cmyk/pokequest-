@@ -1213,9 +1213,22 @@ s.innerHTML=`
     setNewReward({name:"",costPesos:"",icon:"🎁"});
     showToast("¡Agregado al catálogo!","🎁");
   };
-  const deleteCatalogItem = (id) => {
+ const deleteCatalogItem = async (id) => {
     if (!isAdmin) return;
-    if (!window.confirm("¿Eliminar del catálogo global?")) return;
+    const item = catalogo.find(c=>c.id===id);
+    const ok = await askConfirm({
+      title: "¿Eliminar del catálogo?",
+      subtitle: `Esto lo quitará para todos los usuarios.`,
+      icon: item?.icon || "🗑️",
+      accent: "#dc2626",
+      glow: "#f87171",
+      details: item ? [
+        {label:"Recompensa", value: item.name, color:"#f87171"},
+        {label:"Costo",      value: formatPesos(item.costPesos || coinsToPesos(item.costCoins)), color:"#fbbf24"},
+      ] : [],
+      confirmText: "Eliminar",
+    });
+    if(!ok) return;
     const list=catalogo.filter(c=>c.id!==id);
     setCatalogo(list); pushCatalogo(list);
   };

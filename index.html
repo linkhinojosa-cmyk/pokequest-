@@ -807,6 +807,11 @@ s.innerHTML=`
       @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
       @keyframes fadeIn{from{opacity:0}to{opacity:1}}
       @keyframes modalPop{0%{transform:scale(0.85);opacity:0}60%{transform:scale(1.03)}100%{transform:scale(1);opacity:1}}
+      input, textarea, select {
+        user-select: text !important;
+        -webkit-user-select: text !important;
+        -webkit-touch-callout: default !important;
+      }
     `;
     document.head.appendChild(s);
     return()=>document.head.removeChild(s);
@@ -1761,9 +1766,10 @@ const todayStr      = TODAY();
     </div>
   );
 
-  return(
-    <div style={{background:BG,color:TXT,minHeight:"100vh",fontFamily:"system-ui,-apple-system,sans-serif"}} className="pb-28">
-
+ return(
+    <div style={{background:BG,color:TXT,minHeight:"100vh",fontFamily:"system-ui,-apple-system,sans-serif",
+      userSelect:"none",WebkitUserSelect:"none",
+      WebkitTouchCallout:"none",WebkitTapHighlightColor:"transparent"}} className="pb-28">
       {/* Floating XP */}
       {xpAnim&&(
         <div className="fixed top-28 right-5 z-50 pointer-events-none font-black text-lg animate-bounce"

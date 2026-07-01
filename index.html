@@ -2189,6 +2189,76 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
           )}
         </div>
       )}
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ CONFIRM MODAL (GAMIFIED) ━━━━━━━━━━━━━━━━ */}
+      {confirmModal&&(()=>{
+        const m = confirmModal;
+        const accent = m.accent || "#dc2626";
+        const glow   = m.glow   || "#f87171";
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            style={{background:"rgba(0,0,0,0.8)",backdropFilter:"blur(6px)",
+              animation:"fadeIn 0.2s ease-out"}}
+            onClick={m.onCancel}>
+            <div className="w-full max-w-sm rounded-3xl overflow-hidden"
+              style={{background:"linear-gradient(180deg,#0f1520,#0a0d18)",
+                border:`2px solid ${accent}`,
+                boxShadow:`0 0 40px ${glow}50, inset 0 0 20px ${accent}15`,
+                animation:"modalPop 0.3s ease-out"}}
+              onClick={e=>e.stopPropagation()}>
+
+              {/* Glowing top strip */}
+              <div style={{height:4,background:`linear-gradient(90deg,transparent,${glow},transparent)`}}/>
+
+              {/* Icon banner */}
+              <div style={{padding:"24px 24px 12px",textAlign:"center"}}>
+                <div style={{fontSize:56,marginBottom:8,filter:`drop-shadow(0 0 20px ${glow}80)`}}>
+                  {m.icon||"⚠️"}
+                </div>
+                <p style={{fontSize:20,fontWeight:900,color:TXT,margin:0,letterSpacing:"-0.5px"}}>
+                  {m.title}
+                </p>
+                {m.subtitle&&(
+                  <p style={{fontSize:13,color:MUTED,marginTop:6,lineHeight:1.4}}>
+                    {m.subtitle}
+                  </p>
+                )}
+              </div>
+
+              {/* Details table (opcional) */}
+              {m.details&&m.details.length>0&&(
+                <div style={{margin:"0 20px 16px",padding:"14px 16px",borderRadius:16,
+                  background:"#050815",border:`1px solid ${BORD}`}}>
+                  {m.details.map((d,i)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",
+                      alignItems:"center",padding:"6px 0",
+                      borderBottom:i<m.details.length-1?`1px solid ${BORD}`:"none"}}>
+                      <span style={{fontSize:12,color:MUTED,fontWeight:"bold"}}>{d.label}</span>
+                      <span style={{fontSize:14,fontWeight:"black",color:d.color||TXT}}>{d.value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div style={{padding:"0 20px 20px",display:"flex",gap:10}}>
+                <button onClick={m.onCancel}
+                  style={{flex:1,padding:"14px 0",borderRadius:14,cursor:"pointer",
+                    background:CARD,border:`1px solid ${BORD}`,
+                    color:MUTED,fontSize:13,fontWeight:"black"}}>
+                  Cancelar
+                </button>
+                <button onClick={m.onConfirm}
+                  style={{flex:1.4,padding:"14px 0",borderRadius:14,cursor:"pointer",
+                    background:`linear-gradient(135deg,${accent},${glow})`,
+                    border:"none",color:"#fff",fontSize:13,fontWeight:"black",
+                    boxShadow:`0 0 20px ${glow}60`}}>
+                  {m.confirmText||"Confirmar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ TASK EDIT BOTTOM SHEET ━━━━━━━━━━━━━━━━━━ */}
       {sheetTask&&(()=>{
         const t = sheetTask;

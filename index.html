@@ -2256,15 +2256,40 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                     <div className="space-y-1.5">
                       {ct.map(task=>{
                         const isDone=done.includes(task.id);const diff=DIFF[task.difficulty];
+                        const isDragged  = reorderMode && draggedId === task.id;
+                        const isDragOver = reorderMode && dragOverId === task.id;
                         return(
                           <div key={task.id} className="rounded-xl flex items-center gap-2.5 px-3 py-2.5"
-                            onTouchStart={()=>startLongPress(task)}
-                            onTouchEnd={cancelLongPress}
-                            onTouchMove={cancelLongPress}
-                            onMouseDown={()=>startLongPress(task)}
-                            onMouseUp={cancelLongPress}
-                            onMouseLeave={cancelLongPress}
-                            style={{background:CARD,border:`1px solid ${BORD}`,borderLeft:`3px solid ${catInfo.accent}`,opacity:isDone?0.5:1,cursor:"pointer"}}>
+                            draggable={reorderMode}
+                            onDragStart={reorderMode?()=>handleDragStart(task.id):undefined}
+                            onDragOver={reorderMode?(e)=>{e.preventDefault();handleDragOver(task.id);}:undefined}
+                            onDragEnd={reorderMode?handleDragEnd:undefined}
+                            onDrop={reorderMode?(e)=>{e.preventDefault();handleDragEnd();}:undefined}
+                            onTouchStart={reorderMode?()=>handleDragStart(task.id):()=>startLongPress(task)}
+                            onTouchEnd={reorderMode?handleDragEnd:cancelLongPress}
+                            onTouchMove={reorderMode?(e)=>{
+                              const touch = e.touches[0];
+                              const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                              const card = el?.closest('[data-task-id]');
+                              if (card) handleDragOver(card.getAttribute('data-task-id'));
+                            }:cancelLongPress}
+                            onMouseDown={reorderMode?undefined:()=>startLongPress(task)}
+                            onMouseUp={reorderMode?undefined:cancelLongPress}
+                            onMouseLeave={reorderMode?undefined:cancelLongPress}
+                            data-task-id={task.id}
+                            style={{
+                              background:isDragOver?"#1e3a5f":CARD,
+                              border:`1px solid ${isDragOver?"#3b82f6":BORD}`,
+                              borderLeft:`3px solid ${catInfo.accent}`,
+                              opacity:isDragged?0.4:(isDone?0.5:1),
+                              cursor:reorderMode?"grab":"pointer",
+                              transform:isDragged?"scale(0.97)":"scale(1)",
+                              transition:"transform 0.15s, background 0.15s",
+                              boxShadow:isDragOver?"0 0 12px #3b82f640":"none"
+                            }}>
+                            {reorderMode&&(
+                              <span style={{color:"#3b82f6",fontSize:16,marginRight:2}}>⋮⋮</span>
+                            )}
                             <span className="text-xl flex-shrink-0">{task.icon}</span>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate" style={{color:isDone?MUTED:TXT,textDecoration:isDone?"line-through":"none"}}>{task.name}</p>

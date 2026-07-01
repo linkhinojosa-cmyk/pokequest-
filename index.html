@@ -578,6 +578,7 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
     mode: "no-cors",
     body: JSON.stringify({
       type:       "gasto",
+      secret:     API_SECRET,
       usuario:    user.displayName,
       fecha:      gFecha,
       monto:      Number(gMonto.replace(/\./g,"").replace(",",".")),

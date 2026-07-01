@@ -761,37 +761,38 @@ function MainApp({ user, onLogout }) {
   const toastRef = useRef(null);
   const xpRef    = useRef(null);
 // ── Interceptar botón atrás del sistema (Android/iOS/PWA) ──────────────────
+
   useEffect(()=>{
-    // Al montar, agregamos una entrada extra al historial para poder "atrasar"
-    // sin salir de la app. Esto se hace UNA sola vez al abrir la app.
-    window.history.pushState({pokequest:true}, "");
+    // Al montar, agregamos una entrada al historial. Cada vez que se dispara
+    // popstate (usuario presionó atrás), inmediatamente reponemos otra entrada
+    // para que la app nunca se quede sin historial que interceptar.
+    if (!window.history.state || !window.history.state.pokequest) {
+      window.history.pushState({pokequest:true, level:0}, "");
+    }
 
     const handleBack = (e) => {
-      // Prioridad: si algún modal/sheet está abierto, ciérralo primero
+      // Reponer inmediatamente la entrada del historial para evitar cierre accidental
+      window.history.pushState({pokequest:true, level:0}, "");
+
+      // Ahora sí, decidir qué hacer según el estado de la app
       if (confirmModal) {
         confirmModal.onCancel();
-        window.history.pushState({pokequest:true}, "");
         return;
       }
       if (sheetTask) {
         closeSheet();
-        window.history.pushState({pokequest:true}, "");
         return;
       }
       if (reorderMode) {
         exitReorderMode();
-        window.history.pushState({pokequest:true}, "");
         return;
       }
-      // Si estamos en una tab que no es la principal, ir a la principal
       if (screen !== "play") {
         setScreen("play");
-        window.history.pushState({pokequest:true}, "");
         return;
       }
-      // Si estamos en la principal, agregamos otra entrada para que
-      // el próximo back también sea interceptado (evita salir accidentalmente)
-      window.history.pushState({pokequest:true}, "");
+      // Si estamos en Play y no hay nada abierto, no hacemos nada
+      // La app permanece abierta gracias al pushState de arriba
     };
 
     window.addEventListener("popstate", handleBack);

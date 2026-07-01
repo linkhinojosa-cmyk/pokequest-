@@ -419,6 +419,7 @@ const DIFF = {
 // Hardcoded default Apps Script URL — all users sync here unless they set an override.
 const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby9zIYIdfmgVFVGbkmRiBKRAnWz5b9KMq237XUNMAE1_04teKDrLP0ymcKEfQgWTPjk/exec";
 // ─── Security config (must match Apps Script v4) ────────────────────────────
+
 const API_SECRET     = "pq-2026-clau-hinojosa-7f9d3a8c1b5e";
 const ADMIN_KEYS = {
   "pedro": "pedro-admin-2026-9f8e7d6c5b4a"
@@ -540,7 +541,7 @@ const gridSprite = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/ma
 const artSprite  = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
 
 // ─── GastosScreen ─────────────────────────────────────────────────────────────
-function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CARD, BORD, MUTED }) {
+function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CARD, BORD, MUTED, API_SECRET }) {
   const CATEGORIAS=["Alimentación","Supermercado","Restaurantes","Cafeterías","Delivery","Transporte","Combustible","Uber/Taxi","Locomoción colectiva","Salud","Farmacia","Médico","Educación","Cursos","Libros","Entretención","Streaming","Videojuegos","Ropa","Calzado","Accesorios","Hogar","Arriendo","Servicios básicos","Internet","Teléfono","Mascotas","Belleza","Deporte","Ahorro","Inversión","Regalo","Otro"];
   const MEDIOS_PAGO=["Crédito","Débito","Efectivo","Transferencia","Prepago"];
   const PRIORIDADES=["Esencial","Importante","Prescindible"];
@@ -3161,17 +3162,7 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
 
       {/* ═══════════════════════════════════════ GASTOS SCREEN ══════════════════ */}
 
-        {screen==="gastos"&&(
-          <GastosScreen
-            player={player}
-            setPlayer={setPlayer}
-            pushEstado={pushEstado}
-            showToast={showToast}
-            user={user}
-            inp={inp} 
-            CARD={CARD} BORD={BORD} MUTED={MUTED}
-          />
-        )}
+        {screen==="gastos"&&(<GastosScreen player={player} setPlayer={setPlayer} pushEstado={pushEstado} showToast={showToast} user={user} inp={inp} CARD={CARD} BORD={BORD} MUTED={MUTED} API_SECRET={API_SECRET}/>)}
 
 
       <div className="fixed bottom-0 inset-x-0" style={{

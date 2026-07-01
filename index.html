@@ -1704,7 +1704,12 @@ const deleteFromSheet = async () => {
   const caughtList    = POKEMON.filter(p=>player.caughtIds.includes(p.id));
   const xpNeeded      = XP_FOR_LEVEL(player.level);
 const todayStr      = TODAY();
-  const visibleTasks  = tasks.filter(t => shouldShowToday(t, todayStr));
+  const visibleTasks = tasks
+    .filter(t => shouldShowToday(t, todayStr))
+    .sort((a,b) => {
+      if (a.category !== b.category) return 0;
+      return (a.order||0) - (b.order||0);
+    });
   const totalPct      = visibleTasks.length?Math.round(done.filter(id=>visibleTasks.find(t=>t.id===id)).length/visibleTasks.length*100):0;
   const catStats      = (cat)=>{const a=visibleTasks.filter(t=>t.category===cat);const c=a.filter(t=>done.includes(t.id));return{t:a.length,c:c.length,pct:a.length?Math.round(c.length/a.length*100):0};};
   const nextPoke      = POKEMON.filter(p=>!player.caughtIds.includes(p.id)&&p.xp>player.totalXpEarned&&(!p.evo||player.caughtIds.includes(p.evo))).sort((a,b)=>a.xp-b.xp)[0];

@@ -1160,7 +1160,75 @@ s.innerHTML=`
   const cancelLongPress = () => {
     clearTimeout(longPressRef.current);
   };
+// ── Modo reordenar: drag & drop ────────────────────────────────────────────
+  const enterReorderMode = () => {
+    if (navigator.vibrate) navigator.vibrate(30);
+    setReorderMode(true);
+  };
+  const exitReorderMode = () => {
+    setReorderMode(false);
+    setDraggedId(null);
+    setDragOverId(null);
+    // Al salir, sincronizar el nuevo orden con la nube
+    pushTareasFull(tasks);
+    showToast("Orden guardado","✓");
+  };
+  const handleDragStart = (taskId) => {
+    setDraggedId(taskId);
+  };
+  const handleDragOver = (taskId) => {
+    if (draggedId === taskId) return;
+    setDragOverId(taskId);
+  };
+  const handleDragEnd = () => {
+    if (!draggedId || !dragOverId || draggedId === dragOverId) {
+      setDraggedId(null); setDragOverId(null); return;
+    }
+    const draggedTask = tasks.find(t => t.id === draggedId);
+    const targetTask  = tasks.find(t => t.id === dragOverId);
+    if (!draggedTask || !targetTask) return;
+    // Solo permitir reordenar dentro de la misma categoría
+    if (draggedTask.category !== targetTask.category) {
+      setDraggedId(null); setDragOverId(null);
+      showToast("Solo puedes reordenar dentro de la misma categoría","⚠️");
+      return;
+    }
+    // Reordenar: sacar draggedTask, insertarlo antes de targetTask
+    const sameCategoryTasks = tasks
+      .filter(t => t.category === draggedTask.category)
+      .sort((a,b) => (a.order||0) - (b.order||0));
+    const withoutDragged = sameCategoryTasks.filter(t => t.id !== draggedId);
+    const targetIdx = withoutDragged.findIndex(t => t.id === dragOverId);
+    withoutDragged.splice(targetIdx, 0, draggedTask);
+    // Reasignar `order` secuencialmente en esta categoría
+    const reordered = withoutDragged.map((t, i) => ({...t, order: i}));
+    const otherCategoryTasks = tasks.filter(t => t.category !== draggedTask.category);
+    setTasks([...otherCategoryTasks, ...reordered]);
+    setDraggedId(null); setDragOverId(null);
+  };
 
+  // ── Ordenar automáticamente ────────────────────────────────────────────────
+  const sortTasks = (mode) => {
+    const grouped = {};
+    tasks.forEach(t => {
+      if (!grouped[t.category]) grouped[t.category] = [];
+      grouped[t.category].push(t);
+    });
+    const sorted = [];
+    Object.keys(grouped).forEach(cat => {
+      let list = grouped[cat];
+      if (mode === "alpha") {
+        list = [...list].sort((a,b) => a.name.localeCompare(b.name));
+      } else if (mode === "difficulty") {
+        const rank = {easy:0, medium:1, hard:2};
+        list = [...list].sort((a,b) => rank[a.difficulty] - rank[b.difficulty]);
+      }
+      list.forEach((t, i) => sorted.push({...t, order: i}));
+    });
+    setTasks(sorted);
+    pushTareasFull(sorted);
+    showToast(mode === "alpha" ? "Ordenado alfabéticamente" : "Ordenado por dificultad","🔀");
+  };
   // ── Bottom sheet: guardar cambios ──────────────────────────────────────────
   const saveEdit = () => {
     if(!editForm.name.trim()){showToast("Ingresa un nombre","⚠️");return;}

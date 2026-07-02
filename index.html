@@ -2107,12 +2107,32 @@ const todayStr      = TODAY();
                     style={{background:CARD,border:`1px solid ${BORD}`,color:MUTED,cursor:"pointer"}}>
                     🔀 Reordenar
                   </button>
-                  <button onClick={()=>sortTasks("alpha")}
+                  <button onClick={async()=>{
+                    const ok = await askConfirm({
+                      title: "¿Ordenar alfabéticamente?",
+                      subtitle: "Esto reemplazará tu orden personalizado actual por orden A-Z.",
+                      icon: "🔤",
+                      accent: "#7c3aed",
+                      glow: "#a78bfa",
+                      confirmText: "Ordenar A-Z",
+                    });
+                    if(ok) sortTasks("alpha");
+                  }}
                     className="flex-1 rounded-xl py-2.5 text-xs font-black transition-all"
                     style={{background:CARD,border:`1px solid ${BORD}`,color:MUTED,cursor:"pointer"}}>
                     🔤 A-Z
                   </button>
-                  <button onClick={()=>sortTasks("difficulty")}
+                  <button onClick={async()=>{
+                    const ok = await askConfirm({
+                      title: "¿Ordenar por dificultad?",
+                      subtitle: "Esto reemplazará tu orden personalizado actual (fáciles primero, épicas al final).",
+                      icon: "⚡",
+                      accent: "#d97706",
+                      glow: "#fbbf24",
+                      confirmText: "Ordenar",
+                    });
+                    if(ok) sortTasks("difficulty");
+                  }}
                     className="flex-1 rounded-xl py-2.5 text-xs font-black transition-all"
                     style={{background:CARD,border:`1px solid ${BORD}`,color:MUTED,cursor:"pointer"}}>
                     ⚡ Dificultad

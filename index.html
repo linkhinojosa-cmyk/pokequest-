@@ -761,6 +761,7 @@ function MainApp({ user, onLogout }) {
   const reorderPressRef  = useRef(null);
   const reorderStartPos  = useRef({x:0,y:0});
   const reorderDragging  = useRef(false);
+  const reorderLastY     = useRef(0);
   // Modal de confirmación gamificado (reemplaza window.confirm)
   const [confirmModal, setConfirmModal] = useState(null);
   // Estructura: {title, subtitle, icon, accent, glow, details:[{label,value,color}], confirmText, onConfirm}

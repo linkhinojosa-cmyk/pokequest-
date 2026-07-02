@@ -2269,10 +2269,19 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                         return(
                           <div key={task.id} className="rounded-xl flex items-center gap-2.5 px-3 py-2.5"
                             onTouchStart={reorderMode?(e)=>{
-                              if (navigator.vibrate) navigator.vibrate(20);
-                              handleDragStart(task.id);
+                              startReorderPress(task.id, e.touches[0]);
                             }:()=>startLongPress(task)}
                             onTouchMove={reorderMode?(e)=>{
+                              if (!reorderDragging.current) {
+                                // Todavía no se activó el drag: si el dedo se movió,
+                                // es scroll normal, cancelamos el long-press.
+                                const touch = e.touches[0];
+                                const dx = Math.abs(touch.clientX - reorderStartPos.current.x);
+                                const dy = Math.abs(touch.clientY - reorderStartPos.current.y);
+                                if (dx > 10 || dy > 10) cancelReorderPress();
+                                return; // deja que el navegador haga scroll normal
+                              }
+                              // Drag activo: bloquear scroll y actualizar destino
                               e.preventDefault();
                               const touch = e.touches[0];
                               const el = document.elementFromPoint(touch.clientX, touch.clientY);
@@ -2282,8 +2291,14 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                                 if (targetId !== dragOverId) handleDragOver(targetId);
                               }
                             }:cancelLongPress}
-                            onTouchEnd={reorderMode?handleDragEnd:cancelLongPress}
-                            onTouchCancel={reorderMode?handleDragEnd:cancelLongPress}
+                            onTouchEnd={reorderMode?()=>{
+                              if (reorderDragging.current) handleDragEnd();
+                              cancelReorderPress();
+                            }:cancelLongPress}
+                            onTouchCancel={reorderMode?()=>{
+                              if (reorderDragging.current) handleDragEnd();
+                              cancelReorderPress();
+                            }:cancelLongPress}
                             onMouseDown={reorderMode?()=>handleDragStart(task.id):()=>startLongPress(task)}
                             onMouseMove={reorderMode&&draggedId?(e)=>{
                               const el = document.elementFromPoint(e.clientX, e.clientY);
@@ -2305,14 +2320,14 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                               transform:isDragged?"scale(0.97)":"scale(1)",
                               transition:"transform 0.15s, background 0.15s",
                               boxShadow:isDragOver?"0 0 12px #3b82f640":"none",
-                              touchAction:reorderMode?"none":"auto",
+                              touchAction:isDragged?"none":(reorderMode?"pan-y":"auto"),
                               userSelect:"none",
                               WebkitUserSelect:"none",
                               WebkitTouchCallout:"none",
                               WebkitTapHighlightColor:"transparent"
                             }}>
                             {reorderMode&&(
-                              <span style={{color:"#3b82f6",fontSize:16,marginRight:2}}>⋮⋮</span>
+                              <span style={{color:isDragged?"#60a5fa":"#3b82f6",fontSize:16,marginRight:2}}>⋮⋮</span>
                             )}
                             <span className="text-xl flex-shrink-0">{task.icon}</span>
                             <div className="flex-1 min-w-0">

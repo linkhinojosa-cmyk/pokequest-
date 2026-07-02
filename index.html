@@ -405,7 +405,13 @@ const _P = [
 const POKEMON = _P.map(([id,name,type,xp,evo])=>({id,name,type,xp,evo}));
 
 // ─── Task & game config ───────────────────────────────────────────────────────
-const TODAY = () => new Date().toISOString().split("T")[0];
+const TODAY = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 const XP_FOR_LEVEL = (lvl) => Math.floor(120 * Math.pow(lvl, 1.6));
 const LEVEL_TITLE = (lvl) => lvl>=20?"✨ Legendaria":lvl>=10?"🦸 Maestra":lvl>=5?"⚔️ Entrenadora":"🌱 Recluta";
 

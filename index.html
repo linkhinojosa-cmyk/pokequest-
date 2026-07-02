@@ -1073,10 +1073,12 @@ s.innerHTML=`
     if(tasks.every(t=>newDone.includes(t.id))) earn("perfect");
     if(["h1","h2","h3"].every(id=>newDone.includes(id))) earn("cats");
 
-    const newlyAvail=POKEMON.filter(p=>!caughtIds.includes(p.id)&&!p.evo&&prevTotal<p.xp&&totalXpEarned>=p.xp);
+    const prevCaracolas=(player.caracolas||0);
+    const newCaracolas=prevCaracolas+caracolasGanadas;
+    const newlyAvail=POKEMON.filter(p=>!caughtIds.includes(p.id)&&!p.evo&&prevCaracolas<p.xp&&newCaracolas>=p.xp);
     const newP={xp,totalXpEarned,level,streak,totalDone,lastDate:today,badges:b,caughtIds,
                 coins,totalCoinsEarned,weekStart,weekCoinsEarned,
-                caracolas:(player.caracolas||0)+caracolasGanadas,
+                caracolas:newCaracolas,
                 totalCaracolasEarned:(player.totalCaracolasEarned||0)+caracolasGanadas};
 
     if(leveled)
@@ -2703,7 +2705,7 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
         const preEvo=p.evo?POKEMON.find(x=>x.id===p.evo):null;
         const nextEvos=POKEMON.filter(x=>x.evo===p.id);
         const desc=descCache[p.id];
-        const xpLeft=Math.max(0,p.xp-player.totalXpEarned);
+        const xpLeft=Math.max(0,p.xp-(player.caracolas||0));
         return(
           <div className="fixed inset-0 z-50 flex items-end justify-center"
             style={{background:"rgba(0,0,0,0.75)"}}

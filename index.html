@@ -1101,6 +1101,13 @@ s.innerHTML=`
       showToast(`+${xpGain} XP · +${formatPesos(coinsToPesos(coinGain))}`,"⚡");
 
     setPlayer(newP);
+        // Guardado inmediato y síncrono: no depende del ciclo de render de React,
+        // así sobrevive aunque el usuario cierre la app inmediatamente después.
+        try{
+          localStorage.setItem(`pq-${user.username}-done-${today}`, JSON.stringify(newDone));
+          localStorage.setItem(`pq-${user.username}-player`, JSON.stringify(newP));
+          localStorage.setItem(`pq-${user.username}-xp-${today}`, String(newTodayXp));
+        }catch{}
         upsertDay(newDone,newP,newTodayXp);
         pushEstado(newP);
         pushTareaCompletada(task.id);
@@ -1128,6 +1135,14 @@ s.innerHTML=`
       totalCaracolasEarned: Math.max(0, (player.totalCaracolasEarned||0) - DIFF[task.difficulty].xp),
     };
     setDone(newDone);setTodayXp(newTodayXp);setPlayer(newP);
+    // Guardado inmediato y síncrono: no depende del ciclo de render de React,
+    // así sobrevive aunque el usuario cierre la app inmediatamente después.
+    try{
+      const today=TODAY();
+      localStorage.setItem(`pq-${user.username}-done-${today}`, JSON.stringify(newDone));
+      localStorage.setItem(`pq-${user.username}-player`, JSON.stringify(newP));
+      localStorage.setItem(`pq-${user.username}-xp-${today}`, String(newTodayXp));
+    }catch{}
     upsertDay(newDone,newP,newTodayXp);
     pushEstado(newP);
     pushTareaDescompletada(task.id);

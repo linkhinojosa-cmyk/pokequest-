@@ -799,6 +799,10 @@ function MainApp({ user, onLogout }) {
         exitReorderMode();
         return;
       }
+      if (selectedPoke) {
+        setSelectedPoke(null);
+        return;
+      }
       if (screen !== "play") {
         setScreen("play");
         return;
@@ -809,7 +813,7 @@ function MainApp({ user, onLogout }) {
 
     window.addEventListener("popstate", handleBack);
     return () => window.removeEventListener("popstate", handleBack);
-  }, [confirmModal, sheetTask, reorderMode, screen]);
+  }, [confirmModal, sheetTask, reorderMode, screen, selectedPoke]);
   // Inject keyframes
   useEffect(()=>{
     const s=document.createElement("style");

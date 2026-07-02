@@ -1258,10 +1258,27 @@ s.innerHTML=`
     // Reasignar `order` secuencialmente en esta categoría
     const reordered = withoutDragged.map((t, i) => ({...t, order: i}));
     const otherCategoryTasks = tasks.filter(t => t.category !== draggedTask.category);
-    setTasks([...otherCategoryTasks, ...reordered]);
+ setTasks([...otherCategoryTasks, ...reordered]);
     setDraggedId(null); setDragOverId(null);
   };
 
+  // ── Long-press para iniciar el drag (permite hacer scroll normal antes) ────
+  const startReorderPress = (taskId, touch) => {
+    reorderStartPos.current = {x:touch.clientX, y:touch.clientY};
+    reorderDragging.current = false;
+    clearTimeout(reorderPressRef.current);
+    reorderPressRef.current = setTimeout(()=>{
+      reorderDragging.current = true;
+      if (navigator.vibrate) navigator.vibrate(20);
+      handleDragStart(taskId);
+    }, 350);
+  };
+  const cancelReorderPress = () => {
+    clearTimeout(reorderPressRef.current);
+    reorderDragging.current = false;
+  };
+
+  // ── Ordenar automáticamente ────────────────────────────────────────────────
   // ── Ordenar automáticamente ────────────────────────────────────────────────
   const sortTasks = (mode) => {
     const grouped = {};

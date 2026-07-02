@@ -1266,6 +1266,7 @@ s.innerHTML=`
   // ── Long-press para iniciar el drag (permite hacer scroll normal antes) ────
   const startReorderPress = (taskId, touch) => {
     reorderStartPos.current = {x:touch.clientX, y:touch.clientY};
+    reorderLastY.current = touch.clientY;
     reorderDragging.current = false;
     clearTimeout(reorderPressRef.current);
     reorderPressRef.current = setTimeout(()=>{
@@ -2273,18 +2274,21 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                               startReorderPress(task.id, e.touches[0]);
                             }:()=>startLongPress(task)}
                             onTouchMove={reorderMode?(e)=>{
+                              e.preventDefault(); // controlamos el scroll manualmente
+                              const touch = e.touches[0];
                               if (!reorderDragging.current) {
-                                // Todavía no se activó el drag: si el dedo se movió,
-                                // es scroll normal, cancelamos el long-press.
-                                const touch = e.touches[0];
+                                // Todavía no se activó el drag: hacemos scroll manual
+                                // (el navegador no puede porque touchAction está en "none")
+                                const deltaY = reorderLastY.current - touch.clientY;
+                                window.scrollBy(0, deltaY);
+                                reorderLastY.current = touch.clientY;
+                                // Si el dedo se movió mucho desde el inicio, cancela el long-press
                                 const dx = Math.abs(touch.clientX - reorderStartPos.current.x);
                                 const dy = Math.abs(touch.clientY - reorderStartPos.current.y);
                                 if (dx > 10 || dy > 10) cancelReorderPress();
-                                return; // deja que el navegador haga scroll normal
+                                return;
                               }
-                              // Drag activo: bloquear scroll y actualizar destino
-                              e.preventDefault();
-                              const touch = e.touches[0];
+                              // Drag activo: buscar la tarjeta destino bajo el dedo
                               const el = document.elementFromPoint(touch.clientX, touch.clientY);
                               const card = el?.closest('[data-task-id]');
                               if (card) {
@@ -2321,7 +2325,7 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                               transform:isDragged?"scale(0.97)":"scale(1)",
                               transition:"transform 0.15s, background 0.15s",
                               boxShadow:isDragOver?"0 0 12px #3b82f640":"none",
-                              touchAction:isDragged?"none":(reorderMode?"pan-y":"auto"),
+                              touchAction:reorderMode?"none":"auto",
                               userSelect:"none",
                               WebkitUserSelect:"none",
                               WebkitTouchCallout:"none",

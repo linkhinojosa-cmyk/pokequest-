@@ -1674,19 +1674,14 @@ const deleteFromSheet = async () => {
       }
 
       // Reemplazar tareas completadas de hoy
-      if (data.tareasCompletadas) {
+      // El Sheet MANDA: reemplaza completamente las tareas completadas de hoy.
+      {
           const today = TODAY();
-          const cloudTodayIds = data.tareasCompletadas
+          const cloudTodayIds = (data.tareasCompletadas || [])
             .filter(tc => String(tc.fecha).slice(0,10) === today)
             .map(tc => tc.task_id);
-          let localTodayIds = [];
-          try{
-            const rd = await _store.get(`pq-${user.username}-done-${today}`);
-            if(rd) localTodayIds = JSON.parse(rd.value);
-          }catch{}
-          const merged = Array.from(new Set([...cloudTodayIds, ...localTodayIds]));
-          setDone(merged);
-          try{ localStorage.setItem(`pq-${user.username}-done-${today}`, JSON.stringify(merged)); }catch{}
+          setDone(cloudTodayIds);
+          try{ localStorage.setItem(`pq-${user.username}-done-${today}`, JSON.stringify(cloudTodayIds)); }catch{}
         }
 
       // Reemplazar catálogo, canjes, recompensas, historial

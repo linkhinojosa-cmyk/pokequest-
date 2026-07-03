@@ -1599,9 +1599,10 @@ const deleteFromSheet = async () => {
         action,
         secret: API_SECRET,
         userToken: userToken,
+        _t: Date.now(),   // parámetro único: evita que el navegador use caché
         ...params
       }).toString();
-      const res = await fetch(`${url}?${qs}`);
+      const res = await fetch(`${url}?${qs}`, { cache: "no-store" });
       return await res.json();
     } catch { return null; }
   };

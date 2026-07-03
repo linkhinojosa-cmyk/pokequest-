@@ -888,9 +888,26 @@ s.innerHTML=`
       }catch{}
       try{const r=await _store.get(`pq-${user.username}-rewards`);     if(r) setRewards(JSON.parse(r.value));}catch{}
       try{const r=await _store.get(`pq-${user.username}-redemptions`); if(r) setRedemptions(JSON.parse(r.value));}catch{}
-      try{const r=await _store.get(`pq-${user.username}-done-${today}`); if(r)setDone(JSON.parse(r.value));}catch{}
+      try{
+        const r=await _store.get(`pq-${user.username}-done-${today}`);
+        if(r) setDone(JSON.parse(r.value));
+        else setDone([]);  // Si no hay tareas completadas HOY, arrancar limpio
+      }catch{ setDone([]); }
+      // Limpiar claves 'done' y 'xp' de días anteriores (evita basura acumulada)
+      try{
+        for(let i=0;i<localStorage.length;i++){
+          const key=localStorage.key(i);
+          if(key && (key.startsWith(`pq-${user.username}-done-`) || key.startsWith(`pq-${user.username}-xp-`))){
+            if(!key.endsWith(today)){ localStorage.removeItem(key); i--; }
+          }
+        }
+      }catch{}
       try{const r=await _store.get(`pq-${user.username}-stats`);          if(r)setDailyStats(JSON.parse(r.value));}catch{}
-      try{const r=await _store.get(`pq-${user.username}-xp-${today}`);   if(r)setTodayXp(Number(r.value));}catch{}
+      try{
+        const r=await _store.get(`pq-${user.username}-xp-${today}`);
+        if(r) setTodayXp(Number(r.value));
+        else setTodayXp(0);  // Si no hay XP de hoy, arrancar en 0
+      }catch{ setTodayXp(0); }
 
       // ── Detect missed tasks from yesterday ────────────────────────────────
       const yest=new Date(today); yest.setDate(yest.getDate()-1);

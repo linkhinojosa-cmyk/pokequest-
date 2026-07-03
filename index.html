@@ -477,11 +477,15 @@ const mondayOf = (dateStr) => {
   return d.toISOString().split("T")[0];
 };
 
-const CATS = {
-  personal:{label:"Personal",icon:"🧘",accent:"#e879f9",dark:"#2e0a3c"},
-  hogar:   {label:"Hogar",   icon:"🏠",accent:"#10b981",dark:"#052e16"},
-  trabajo: {label:"Trabajo", icon:"💼",accent:"#f59e0b",dark:"#431a00"},
-};
+const DEFAULT_CATEGORIES = [
+  {id:"personal", label:"Personal", icon:"🧘", accent:"#e879f9", dark:"#2e0a3c", subs:[]},
+  {id:"hogar",    label:"Hogar",    icon:"🏠", accent:"#10b981", dark:"#052e16", subs:[]},
+  {id:"trabajo",  label:"Trabajo",  icon:"💼", accent:"#f59e0b", dark:"#431a00",
+    subs:[
+      {id:"uber",    label:"Uber",     icon:"🚗"},
+      {id:"inojosa", label:"Hinojosa", icon:"🏢"},
+    ]},
+];
 
 const DEFAULT_TASKS = [
   {id:"p1",name:"Hidratación (8 vasos)",    category:"personal",difficulty:"easy",  icon:"💧", frequency:"daily"},
@@ -755,6 +759,13 @@ function MainApp({ user, onLogout }) {
   const [newT,       setNewT]       = useState({name:"",category:"personal",difficulty:"easy",icon:"✅",sub:"uber",frequency:"daily",freqConfig:null});
   // Bottom sheet para editar tareas (long-press en modo Editar)
   // Modo reordenar: activado desde el botón "🔀 Reordenar"
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const getCat = (id) => categories.find(c => c.id === id) || {id, label:id, icon:"📋", accent:"#94a3b8", dark:"#1e2030", subs:[]};
+  const getSub = (catId, subId) => {
+    const cat = categories.find(c => c.id === catId);
+    if(!cat || !cat.subs) return null;
+    return cat.subs.find(s => s.id === subId) || null;
+  };
   const [reorderMode, setReorderMode] = useState(false);
   const [draggedId,   setDraggedId]   = useState(null);
   const [dragOverId,  setDragOverId]  = useState(null);
@@ -839,6 +850,14 @@ s.innerHTML=`
       const today=TODAY();
 
 // Load tasks first so we can compare with yesterday's done list
+
+      try{
+        const rc=await _store.get(`pq-${user.username}-categories`);
+        if(rc){
+          const parsed=JSON.parse(rc.value);
+          if(Array.isArray(parsed) && parsed.length>0) setCategories(parsed);
+        }
+      }catch{}
       let loadedTasks = DEFAULT_TASKS;
       try{
         const r=await _store.get(`pq-${user.username}-tasks`);
@@ -1005,13 +1024,14 @@ s.innerHTML=`
     if(!ready)return;
     const today=TODAY();
     _store.set(`pq-${user.username}-tasks`, JSON.stringify(tasks)).catch(()=>{});
+    _store.set(`pq-${user.username}-categories`, JSON.stringify(categories)).catch(()=>{});
     _store.set(`pq-${user.username}-player`,JSON.stringify(player)).catch(()=>{});
     _store.set(`pq-${user.username}-done-${today}`,JSON.stringify(done)).catch(()=>{});
     _store.set(`pq-${user.username}-stats`,  JSON.stringify(dailyStats)).catch(()=>{});
     _store.set(`pq-${user.username}-xp-${today}`,String(todayXp)).catch(()=>{});
     _store.set(`pq-${user.username}-rewards`,    JSON.stringify(rewards)).catch(()=>{});
     _store.set(`pq-${user.username}-redemptions`,JSON.stringify(redemptions)).catch(()=>{});
-  },[tasks,player,done,dailyStats,todayXp,rewards,redemptions,ready]);
+  },[tasks,player,done,dailyStats,todayXp,rewards,redemptions,categories,ready]);
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
   const showToast=(msg,emoji="✅")=>{
@@ -1389,7 +1409,7 @@ const deleteFromSheet = async () => {
       accent: "#dc2626",
       glow: "#f87171",
       details: [
-        {label:"Categoría",  value: CATS[sheetTask.category].label, color:"#f87171"},
+        {label:"Categoría",  value: getCat(sheetTask.category).label, color:"#f87171"},
         {label:"Dificultad", value: DIFF[sheetTask.difficulty].label, color:DIFF[sheetTask.difficulty].color},
       ],
       confirmText: "Eliminar",
@@ -1933,7 +1953,8 @@ const todayStr      = TODAY();
 
           {/* Category tabs */}
           <div className="grid grid-cols-3 gap-2 mb-4">
-            {Object.entries(CATS).map(([key,cat])=>{
+            {categories.map((cat)=>{
+              const key=cat.id;
               const s=catStats(key);const active=tab===key;
               return(
                 <button key={key} onClick={()=>setTab(key)}
@@ -1951,16 +1972,19 @@ const todayStr      = TODAY();
             })}
           </div>
 
-          {tab==="trabajo"&&(
+          {getCat(tab).subs && getCat(tab).subs.length>0 && (
             <div className="flex gap-2 mb-4">
-              {[["uber","🚗","Uber","#d1d5db","#1c1c1c","#ffffff60"],
-                ["inojosa","🏢","Hinojosa","#f87171","#1a0505","#ef444460"]].map(([key,ico,lbl,col,bg,bc])=>(
-                <button key={key} onClick={()=>setSubTab(key)}
-                  className="flex-1 rounded-xl py-2.5 text-sm font-bold"
-                  style={{background:subTab===key?bg:BG,border:`1px solid ${subTab===key?bc:BORD}`,color:subTab===key?col:MUTED}}>
-                  {ico} {lbl}
-                </button>
-              ))}
+              {getCat(tab).subs.map((sub)=>{
+                const active=subTab===sub.id;
+                const accent=getCat(tab).accent;
+                return(
+                  <button key={sub.id} onClick={()=>setSubTab(sub.id)}
+                    className="flex-1 rounded-xl py-2.5 text-sm font-bold"
+                    style={{background:active?getCat(tab).dark:BG,border:`1px solid ${active?accent:BORD}`,color:active?accent:MUTED}}>
+                    {sub.icon} {sub.label}
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -1975,7 +1999,7 @@ const todayStr      = TODAY();
             {viewTasks.map(task=>{
               const isDone=done.includes(task.id);
               const wasMissed=!isDone&&missedYesterday.includes(task.id);
-              const cat=CATS[task.category];const diff=DIFF[task.difficulty];
+              const cat=getCat(task.category);const diff=DIFF[task.difficulty];
               return(
                 <div key={task.id} className="rounded-2xl flex items-center gap-3"
                   style={{background:isDone?CARD2:wasMissed?"#1a0d00":CARD,
@@ -2321,7 +2345,8 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                 </details>
               </div>
 
-              {Object.entries(CATS).map(([cat,catInfo])=>{
+              {categories.map((catInfo)=>{
+                const cat=catInfo.id;
                 const ct=tasks.filter(t=>t.category===cat).sort((a,b)=>(a.order||0)-(b.order||0));if(!ct.length)return null;
                 return(
                   <div key={cat} className="mb-4">
@@ -2576,7 +2601,7 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
 {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ TASK EDIT BOTTOM SHEET ━━━━━━━━━━━━━━━━━━ */}
       {sheetTask&&(()=>{
         const t = sheetTask;
-        const cat = CATS[t.category];
+        const cat = getCat(t.category);
         const diff = DIFF[t.difficulty];
         return (
           <div className="fixed inset-0 z-50 flex items-end justify-center"

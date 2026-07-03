@@ -1660,19 +1660,15 @@ const deleteFromSheet = async () => {
         return;
       }
 
-      // Reemplazar estado del jugador
-      if (data.estado) {
-        const e = data.estado;
-        setPlayer(prev => ({
-          ...prev,
-          level: e.level, xp: e.xp, totalXpEarned: e.totalXpEarned,
-          streak: e.streak, totalDone: e.totalDone, lastDate: e.lastDate,
-          badges: e.badges || [], caughtIds: Array.isArray(data.pokedex) ? data.pokedex : prev.caughtIds,
-          coins: e.coins, totalCoinsEarned: e.totalCoinsEarned,
-          weekStart: e.weekStart, weekCoinsEarned: e.weekCoinsEarned,
-          gastosTotal: e.gastosTotal, gastosStreakDays: e.gastosStreakDays,
-          gastosLastDate: e.gastosLastDate, gastosHoy: e.gastosHoy,
-        }));
+      // OPCIÓN A: el botón NO toca tu progreso (nivel, XP, monedas, caracolas).
+      // Solo actualiza la Pokédex desde el Sheet (para ediciones manuales o
+      // sincronización entre dispositivos). Tu progreso de juego se queda intacto.
+      if (Array.isArray(data.pokedex)) {
+        setPlayer(prev => {
+          const updated = { ...prev, caughtIds: data.pokedex };
+          try{ localStorage.setItem(`pq-${user.username}-player`, JSON.stringify(updated)); }catch{}
+          return updated;
+        });
       }
 
       // Reemplazar tareas

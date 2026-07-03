@@ -45,7 +45,7 @@
 
   <script type="text/babel">
 
-    /* ── Persistent storage (same async API as window.storage) ── */
+    /* ── Persistent storage (same async API as window.storage) ─-─ */
     const _store = {
       get: async (key) => {
         try { const v = localStorage.getItem(key); return v !== null ? { key, value: v } : null; }

@@ -961,14 +961,21 @@ s.innerHTML=`
           recompensas:rewards, diario:dailyStats, canjes:redemptions,
         });
         showToast("Tu progreso se subió a la nube ☁️","✅");
-      } else if (hasCloudProgress) {
+      }  else if (hasCloudProgress) {
         const e = data.estado;
-        setPlayer({
-          level: e.level, xp: e.xp, totalXpEarned: e.totalXpEarned,
-          streak: e.streak, totalDone: e.totalDone, lastDate: e.lastDate,
-          badges: e.badges || [], caughtIds: data.pokedex || [],
-          coins: e.coins, totalCoinsEarned: e.totalCoinsEarned,
-          weekStart: e.weekStart, weekCoinsEarned: e.weekCoinsEarned,
+        setPlayer(prev => {
+          const cloudPokedex = data.pokedex || [];
+          const mergedCaught = Array.from(new Set([...(prev.caughtIds||[]), ...cloudPokedex]));
+          const updated = {
+            ...prev,
+            level: e.level, xp: e.xp, totalXpEarned: e.totalXpEarned,
+            streak: e.streak, totalDone: e.totalDone, lastDate: e.lastDate,
+            badges: e.badges || [], caughtIds: mergedCaught,
+            coins: e.coins, totalCoinsEarned: e.totalCoinsEarned,
+            weekStart: e.weekStart, weekCoinsEarned: e.weekCoinsEarned,
+          };
+          try{ localStorage.setItem(`pq-${user.username}-player`, JSON.stringify(updated)); }catch{}
+          return updated;
         });
         if (data.tareas && data.tareas.length > 0) setTasks(data.tareas);
         if (data.tareasCompletadas) {
@@ -1660,7 +1667,7 @@ const deleteFromSheet = async () => {
           ...prev,
           level: e.level, xp: e.xp, totalXpEarned: e.totalXpEarned,
           streak: e.streak, totalDone: e.totalDone, lastDate: e.lastDate,
-          badges: e.badges || [], caughtIds: data.pokedex || prev.caughtIds,
+          badges: e.badges || [], caughtIds: Array.isArray(data.pokedex) ? data.pokedex : prev.caughtIds,
           coins: e.coins, totalCoinsEarned: e.totalCoinsEarned,
           weekStart: e.weekStart, weekCoinsEarned: e.weekCoinsEarned,
           gastosTotal: e.gastosTotal, gastosStreakDays: e.gastosStreakDays,

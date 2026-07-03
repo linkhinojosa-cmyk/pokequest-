@@ -972,10 +972,17 @@ s.innerHTML=`
         if (data.tareas && data.tareas.length > 0) setTasks(data.tareas);
         if (data.tareasCompletadas) {
           const today = TODAY();
-          const todayIds = data.tareasCompletadas
-            .filter(tc => tc.fecha === today)
+          const cloudTodayIds = data.tareasCompletadas
+            .filter(tc => String(tc.fecha).slice(0,10) === today)
             .map(tc => tc.task_id);
-          setDone(todayIds);
+          let localTodayIds = [];
+          try{
+            const rd = await _store.get(`pq-${user.username}-done-${today}`);
+            if(rd) localTodayIds = JSON.parse(rd.value);
+          }catch{}
+          const merged = Array.from(new Set([...cloudTodayIds, ...localTodayIds]));
+          setDone(merged);
+          try{ localStorage.setItem(`pq-${user.username}-done-${today}`, JSON.stringify(merged)); }catch{}
         }
         if (data.diario) setDailyStats(data.diario);
         if (data.canjes) setRedemptions(data.canjes);
@@ -1670,12 +1677,19 @@ const deleteFromSheet = async () => {
 
       // Reemplazar tareas completadas de hoy
       if (data.tareasCompletadas) {
-        const today = TODAY();
-        const todayIds = data.tareasCompletadas
-          .filter(tc => tc.fecha === today)
-          .map(tc => tc.task_id);
-        setDone(todayIds);
-      }
+          const today = TODAY();
+          const cloudTodayIds = data.tareasCompletadas
+            .filter(tc => String(tc.fecha).slice(0,10) === today)
+            .map(tc => tc.task_id);
+          let localTodayIds = [];
+          try{
+            const rd = await _store.get(`pq-${user.username}-done-${today}`);
+            if(rd) localTodayIds = JSON.parse(rd.value);
+          }catch{}
+          const merged = Array.from(new Set([...cloudTodayIds, ...localTodayIds]));
+          setDone(merged);
+          try{ localStorage.setItem(`pq-${user.username}-done-${today}`, JSON.stringify(merged)); }catch{}
+        }
 
       // Reemplazar catálogo, canjes, recompensas, historial
       if (data.catalogo)     setCatalogo(data.catalogo);

@@ -821,6 +821,7 @@ function MainApp({ user, onLogout }) {
   };
   const [searchQuery, setSearchQuery] = useState("");
   const [hideCompleted, setHideCompleted] = useState(false);
+  const [showNewTask, setShowNewTask] = useState(false);
   const normalizeText = (s) => (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   const [reorderMode, setReorderMode] = useState(false);
   const [draggedId,   setDraggedId]   = useState(null);
@@ -860,6 +861,10 @@ function MainApp({ user, onLogout }) {
         confirmModal.onCancel();
         return;
       }
+      if (showNewTask) {
+        setShowNewTask(false);
+        return;
+      }
       if (sheetTask) {
         closeSheet();
         return;
@@ -882,7 +887,7 @@ function MainApp({ user, onLogout }) {
 
     window.addEventListener("popstate", handleBack);
     return () => window.removeEventListener("popstate", handleBack);
-  }, [confirmModal, sheetTask, reorderMode, screen, selectedPoke]);
+  }, [confirmModal, sheetTask, reorderMode, screen, selectedPoke, showNewTask]);
   // Inject keyframes
   useEffect(()=>{
     const s=document.createElement("style");
@@ -1578,6 +1583,7 @@ const deleteFromSheet = async () => {
     const list=[...tasks,newObj];
     setTasks(list); pushTareasFull(list);
     setNewT({name:"",category:"personal",difficulty:"easy",icon:"✅",sub:"uber",frequency:"daily",freqConfig:null,fechaInicio:"",fechaFin:""});
+    setShowNewTask(false);
     showToast("¡Misión creada!","📝");
   };
   const importFile=(e)=>{
@@ -2087,18 +2093,6 @@ const todayStr      = TODAY();
               color:hideCompleted?"#4ade80":MUTED,cursor:"pointer"}}>
             {hideCompleted?"👁️ Mostrando solo pendientes":"✅ Ocultar completadas"}
           </button>
-          <button onClick={()=>setHideCompleted(v=>!v)}
-            className="mb-3 rounded-xl py-2 px-3 text-xs font-bold w-full transition-all"
-            style={{background:hideCompleted?"#052e16":CARD,border:`1px solid ${hideCompleted?"#166534":BORD}`,
-              color:hideCompleted?"#4ade80":MUTED,cursor:"pointer"}}>
-            {hideCompleted?"👁️ Mostrando solo pendientes":"✅ Ocultar completadas"}
-          </button>
-          <button onClick={()=>setHideCompleted(v=>!v)}
-            className="mb-3 rounded-xl py-2 px-3 text-xs font-bold w-full transition-all"
-            style={{background:hideCompleted?"#052e16":CARD,border:`1px solid ${hideCompleted?"#166534":BORD}`,
-              color:hideCompleted?"#4ade80":MUTED,cursor:"pointer"}}>
-            {hideCompleted?"👁️ Mostrando solo pendientes":"✅ Ocultar completadas"}
-          </button>
           <div className="space-y-2">
             {viewTasks.length===0&&(
               <div className="rounded-2xl p-10 text-center" style={{background:CARD,border:`1px dashed ${BORD}`}}>
@@ -2345,8 +2339,24 @@ const todayStr      = TODAY();
                   </button>
                 </div>
               )}
-              <div className="rounded-2xl p-4 mb-5 space-y-2.5" style={{background:CARD,border:"1px solid #1a3a2a"}}>
-                <p className="text-xs font-black uppercase tracking-widest" style={{color:"#4ade80"}}>+ Nueva misión</p>
+              <button onClick={()=>setShowNewTask(true)}
+                className="w-full rounded-2xl py-3.5 text-sm font-black mb-5"
+                style={{background:"#166534",color:"#4ade80",border:"none",cursor:"pointer"}}>
+                + Nueva misión
+              </button>
+              {showNewTask&&(
+              <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+                style={{background:"rgba(0,0,0,0.8)",backdropFilter:"blur(6px)",animation:"fadeIn 0.2s ease-out"}}
+                onClick={()=>setShowNewTask(false)}>
+              <div className="w-full max-w-md rounded-2xl p-4 space-y-2.5 overflow-y-auto"
+                style={{background:CARD,border:"1px solid #1a3a2a",maxHeight:"90vh",animation:"modalPop 0.3s ease-out",
+                  userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none",WebkitTapHighlightColor:"transparent"}}
+                onClick={e=>e.stopPropagation()}>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-black uppercase tracking-widest" style={{color:"#4ade80"}}>+ Nueva misión</p>
+                  <button onClick={()=>setShowNewTask(false)}
+                    style={{background:DIM,color:MUTED,border:"none",borderRadius:8,width:28,height:28,cursor:"pointer",fontSize:14}}>✕</button>
+                </div>
                 <div className="flex gap-2">
                   <input value={newT.icon} onChange={e=>setNewT(p=>({...p,icon:e.target.value}))}
                     style={{...inp,width:48,textAlign:"center",fontSize:20,padding:"8px 4px"}} maxLength={2}/>
@@ -2498,6 +2508,8 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                   </div>
                 </details>
               </div>
+              </div>
+              )}
 
               {categories.map((catInfo)=>{
                 const cat=catInfo.id;

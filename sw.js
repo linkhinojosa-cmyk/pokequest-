@@ -1,4 +1,4 @@
-const CACHE = "pokequest-v1.51";
+const CACHE = "pokequest-v1.52";
 const ASSETS = [
   "./",
   "./index.html",

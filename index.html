@@ -477,14 +477,9 @@ const mondayOf = (dateStr) => {
   return d.toISOString().split("T")[0];
 };
 
+// Categoría genérica inicial para usuarios nuevos (sin categorías en el Sheet)
 const DEFAULT_CATEGORIES = [
-  {id:"personal", label:"Personal", icon:"🧘", accent:"#e879f9", dark:"#2e0a3c", subs:[]},
-  {id:"hogar",    label:"Hogar",    icon:"🏠", accent:"#10b981", dark:"#052e16", subs:[]},
-  {id:"trabajo",  label:"Trabajo",  icon:"💼", accent:"#f59e0b", dark:"#431a00",
-    subs:[
-      {id:"uber",    label:"Uber",     icon:"🚗"},
-      {id:"inojosa", label:"Hinojosa", icon:"🏢"},
-    ]},
+  {id:"general", label:"General", icon:"📋", accent:"#3b82f6", dark:"#0a1e3c", subs:[]},
 ];
 
 const DEFAULT_TASKS = [
@@ -1052,6 +1047,8 @@ s.innerHTML=`
           return updated;
         });
         if (data.tareas && data.tareas.length > 0) setTasks(data.tareas);
+        // El Sheet manda: si el usuario tiene categorías guardadas, usarlas.
+        // (usuario nuevo sin categorías en el Sheet conserva la genérica inicial)
         if (Array.isArray(data.categorias) && data.categorias.length > 0) {
           setCategories(data.categorias);
           try{ localStorage.setItem(`pq-${user.username}-categories`, JSON.stringify(data.categorias)); }catch{}
@@ -1761,6 +1758,12 @@ const deleteFromSheet = async () => {
       // Reemplazar tareas
       if (data.tareas && data.tareas.length > 0) {
         setTasks(data.tareas);
+      }
+
+      // Reemplazar categorías (el Sheet manda)
+      if (Array.isArray(data.categorias) && data.categorias.length > 0) {
+        setCategories(data.categorias);
+        try{ localStorage.setItem(`pq-${user.username}-categories`, JSON.stringify(data.categorias)); }catch{}
       }
 
       // Reemplazar tareas completadas de hoy

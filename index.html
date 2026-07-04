@@ -1319,7 +1319,8 @@ s.innerHTML=`
     if (navigator.vibrate) navigator.vibrate(30);
     setSheetTask(task);
     setSheetView("menu");
-    setEditForm({name:task.name, icon:task.icon, difficulty:task.difficulty});
+    setEditForm({name:task.name, icon:task.icon, difficulty:task.difficulty,
+      fechaInicio:task.fechaInicio||"", fechaFin:task.fechaFin||""});
     setFreqForm({frequency:task.frequency||"daily", freqConfig:task.freqConfig||null});
   };
   const closeSheet = () => {
@@ -1434,7 +1435,8 @@ s.innerHTML=`
   const saveEdit = () => {
     if(!editForm.name.trim()){showToast("Ingresa un nombre","⚠️");return;}
     const list = tasks.map(t => t.id === sheetTask.id
-      ? {...t, name:editForm.name.trim(), icon:editForm.icon||"✅", difficulty:editForm.difficulty}
+      ? {...t, name:editForm.name.trim(), icon:editForm.icon||"✅", difficulty:editForm.difficulty,
+         fechaInicio:editForm.fechaInicio||null, fechaFin:editForm.fechaFin||null}
       : t);
     setTasks(list); pushTareasFull(list);
     showToast("¡Misión actualizada!","✏️");
@@ -2782,9 +2784,9 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
         const accent = m.accent || "#dc2626";
         const glow   = m.glow   || "#f87171";
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          <div className="fixed inset-0 flex items-center justify-center px-4"
             style={{background:"rgba(0,0,0,0.8)",backdropFilter:"blur(6px)",
-              animation:"fadeIn 0.2s ease-out"}}
+              animation:"fadeIn 0.2s ease-out",zIndex:9998}}
             onClick={m.onCancel}>
             <div className="w-full max-w-sm rounded-3xl overflow-hidden"
               style={{background:"linear-gradient(180deg,#0f1520,#0a0d18)",
@@ -2969,6 +2971,33 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                         </button>
                       ))}
                     </div>
+                  </div>
+                  <div>
+                    <label style={{fontSize:11,color:MUTED,fontWeight:"bold",display:"block",marginBottom:6,textTransform:"uppercase",letterSpacing:1.5}}>
+                      Vigencia (opcional)
+                    </label>
+                    <p style={{fontSize:10,color:MUTED,marginBottom:6,lineHeight:1.4}}>
+                      Deja en blanco para que la misión no tenga límite de fechas.
+                    </p>
+                    <div className="flex gap-2">
+                      <div style={{flex:1}}>
+                        <label style={{fontSize:10,color:MUTED,fontWeight:"bold",display:"block",marginBottom:3}}>Desde</label>
+                        <input type="date" value={editForm.fechaInicio||""}
+                          onChange={e=>setEditForm(p=>({...p,fechaInicio:e.target.value}))}
+                          style={{...inp,width:"100%",colorScheme:"dark"}}/>
+                      </div>
+                      <div style={{flex:1}}>
+                        <label style={{fontSize:10,color:MUTED,fontWeight:"bold",display:"block",marginBottom:3}}>Hasta</label>
+                        <input type="date" value={editForm.fechaFin||""}
+                          onChange={e=>setEditForm(p=>({...p,fechaFin:e.target.value}))}
+                          style={{...inp,width:"100%",colorScheme:"dark"}}/>
+                      </div>
+                    </div>
+                    {editForm.fechaInicio && editForm.fechaFin && editForm.fechaFin < editForm.fechaInicio && (
+                      <p style={{fontSize:10,color:"#f87171",marginTop:6,fontWeight:"bold"}}>
+                        ⚠️ La fecha "Hasta" es anterior a "Desde"
+                      </p>
+                    )}
                   </div>
                   <button onClick={saveEdit}
                     className="w-full rounded-2xl py-3.5 text-sm font-black mt-4"

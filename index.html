@@ -766,6 +766,54 @@ function MainApp({ user, onLogout }) {
     if(!cat || !cat.subs) return null;
     return cat.subs.find(s => s.id === subId) || null;
   };
+  // ── Gestión de categorías (Fase 2) ──────────────────────────────────
+  const [catEditor, setCatEditor] = useState(null); // null | {mode:"new"|"edit", cat:{...}}
+  const CAT_COLORS = [
+    {accent:"#e879f9", dark:"#2e0a3c"}, // fucsia
+    {accent:"#10b981", dark:"#052e16"}, // verde
+    {accent:"#f59e0b", dark:"#431a00"}, // ámbar
+    {accent:"#3b82f6", dark:"#0a1e3c"}, // azul
+    {accent:"#ef4444", dark:"#3c0a0a"}, // rojo
+    {accent:"#a78bfa", dark:"#1e0a3c"}, // violeta
+    {accent:"#06b6d4", dark:"#0a2e3c"}, // cian
+    {accent:"#ec4899", dark:"#3c0a24"}, // rosa
+    {accent:"#84cc16", dark:"#1a3c0a"}, // lima
+    {accent:"#f97316", dark:"#3c1a0a"}, // naranja
+  ];
+  const slugify = (s) => "cat-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,6);
+  const subSlugify = () => "sub-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,6);
+
+  // Cuenta cuántas tareas (no archivadas) tiene una categoría
+  const countTasksInCat = (catId) => tasks.filter(t => t.category === catId && !t.archived).length;
+
+  // Guardar una categoría (nueva o editada)
+  const saveCat = (catData) => {
+    if(!catData.label || !catData.label.trim()){ showToast("Ponle un nombre a la categoría","✏️"); return false; }
+    if(!catData.icon || !catData.icon.trim()){ showToast("Ponle un ícono (emoji)","🙂"); return false; }
+    setCategories(prev => {
+      const exists = prev.find(c => c.id === catData.id);
+      if(exists){
+        return prev.map(c => c.id === catData.id ? {...c, ...catData} : c);
+      } else {
+        if(prev.length >= 20){ showToast("Máximo 20 categorías","🚫"); return prev; }
+        return [...prev, catData];
+      }
+    });
+    setCatEditor(null);
+    showToast("Categoría guardada","✅");
+    return true;
+  };
+
+  // Eliminar una categoría (solo si no tiene tareas)
+  const deleteCat = (catId) => {
+    const n = countTasksInCat(catId);
+    if(n > 0){
+      showToast(`Esta categoría tiene ${n} misión(es). Muévelas o elimínalas primero.`,"🚫");
+      return;
+    }
+    setCategories(prev => prev.filter(c => c.id !== catId));
+    showToast("Categoría eliminada","🗑️");
+  };
   const [reorderMode, setReorderMode] = useState(false);
   const [draggedId,   setDraggedId]   = useState(null);
   const [dragOverId,  setDragOverId]  = useState(null);
@@ -1543,10 +1591,14 @@ const deleteFromSheet = async () => {
           const dif=idx.dificultad>=0?cols[idx.dificultad].toLowerCase():"medium";
           const ico=idx.icono>=0&&cols[idx.icono]?cols[idx.icono]:"📋";
           const sub=idx.subtrabajo>=0&&cols[idx.subtrabajo]?cols[idx.subtrabajo].toLowerCase():"inojosa";
-          const validCat=["personal","hogar","trabajo"].includes(cat)?cat:"trabajo";
+          const validCat=categories.find(c=>c.id===cat)?cat:(categories[0]?categories[0].id:"personal");
           const validDif=["easy","medium","hard"].includes(dif)?dif:"medium";
           const task={id:`imp-${Date.now()}-${i}`,name:nombre,category:validCat,difficulty:validDif,icon:ico};
-          if(validCat==="trabajo") task.sub=["uber","inojosa"].includes(sub)?sub:"inojosa";
+          const catObj=categories.find(c=>c.id===validCat);
+          if(catObj && catObj.subs && catObj.subs.length>0){
+            const validSub=catObj.subs.find(s=>s.id===sub);
+            task.sub=validSub?sub:catObj.subs[0].id;
+          }
           newTasks.push(task);
         }
         const merged=[...tasks,...newTasks];
@@ -2155,7 +2207,7 @@ const todayStr      = TODAY();
       {screen==="edit"&&(
         <div className="max-w-md mx-auto px-4 pt-4">
           <div className="flex gap-2 mb-4">
-            {[["tasks","📋","Misiones"],["stats","📊","Estadísticas"]].map(([key,ico,lbl])=>(
+            {[["tasks","📋","Misiones"],["categories","🗂️","Categorías"],["stats","📊","Estadísticas"]].map(([key,ico,lbl])=>(
               <button key={key} onClick={()=>setEditTab(key)}
                 className="flex-1 rounded-xl py-2.5 text-sm font-bold"
                 style={{background:editTab===key?"#052e16":CARD,border:`1px solid ${editTab===key?"#166534":BORD}`,color:editTab===key?"#4ade80":MUTED}}>
@@ -2233,10 +2285,10 @@ const todayStr      = TODAY();
                     onKeyDown={e=>e.key==="Enter"&&addTask()}/>
                 </div>
                 <div className="flex gap-2">
-                  <select value={newT.category} onChange={e=>setNewT(p=>({...p,category:e.target.value}))} style={{...inp,flex:1}}>
-                    <option value="personal">🧘 Personal</option>
-                    <option value="hogar">🏠 Hogar</option>
-                    <option value="trabajo">💼 Trabajo</option>
+                  <select value={newT.category} onChange={e=>setNewT(p=>({...p,category:e.target.value,sub:""}))} style={{...inp,flex:1}}>
+                    {categories.map(cat=>(
+                      <option key={cat.id} value={cat.id}>{cat.icon} {cat.label}</option>
+                    ))}
                   </select>
                   <select value={newT.difficulty} onChange={e=>setNewT(p=>({...p,difficulty:e.target.value}))} style={{...inp,flex:1}}>
                     <option value="easy">Fácil +15 XP</option>
@@ -2280,9 +2332,12 @@ const todayStr      = TODAY();
                       <option key={d} value={d}>Día {d} de cada mes</option>)}
                   </select>
                 )}
-                {newT.category==="trabajo"&&(
-                  <select value={newT.sub} onChange={e=>setNewT(p=>({...p,sub:e.target.value}))} style={{...inp,width:"100%"}}>
-                    <option value="uber">🚗 Uber</option><option value="inojosa">🏢 Hinojosa</option>
+                {getCat(newT.category).subs && getCat(newT.category).subs.length>0 && (
+                  <select value={newT.sub||""} onChange={e=>setNewT(p=>({...p,sub:e.target.value}))} style={{...inp,width:"100%"}}>
+                    <option value="">— Sin subcategoría —</option>
+                    {getCat(newT.category).subs.map(sub=>(
+                      <option key={sub.id} value={sub.id}>{sub.icon} {sub.label}</option>
+                    ))}
                   </select>
                 )}
                 <div className="flex gap-2">
@@ -2431,7 +2486,7 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                               <p className="text-sm font-medium truncate" style={{color:isDone?MUTED:TXT,textDecoration:isDone?"line-through":"none"}}>{task.name}</p>
                               <div className="flex gap-2 flex-wrap">
                                 <span className="text-xs font-bold" style={{color:diff.color}}>+{diff.xp} XP · +{formatPesos(coinsToPesos(diff.coins))} · {diff.label}</span>
-                                {task.sub&&<span className="text-xs" style={{color:MUTED}}>{task.sub==="uber"?"🚗":"🏢"}</span>}
+                                {task.sub&&getSub(task.category,task.sub)&&<span className="text-xs" style={{color:MUTED}}>{getSub(task.category,task.sub).icon}</span>}
                               </div>
                             </div>
                             <button onClick={()=>deleteTask(task.id)} className="rounded-lg px-2.5 py-1.5 text-xs font-bold flex-shrink-0"
@@ -2443,6 +2498,57 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                   </div>
                 );
               })}
+            </div>
+          )}
+          {editTab==="categories"&&(
+            <div>
+              <div className="rounded-xl p-2.5 mb-3 text-center" style={{background:"#1a1a3a",border:"1px solid #4c1d95"}}>
+                <p style={{fontSize:11,color:"#c4b5fd",fontWeight:"bold"}}>
+                  🗂️ Crea, edita o elimina tus categorías y subcategorías
+                </p>
+              </div>
+
+              {/* Botón crear nueva categoría */}
+              <button onClick={()=>setCatEditor({mode:"new", cat:{id:slugify(), label:"", icon:"", accent:CAT_COLORS[0].accent, dark:CAT_COLORS[0].dark, subs:[]}})}
+                className="w-full rounded-xl py-3 text-sm font-black mb-4"
+                style={{background:"#166534",color:"#4ade80",border:"none",cursor:"pointer"}}>
+                + Nueva categoría
+              </button>
+
+              {/* Lista de categorías */}
+              <div className="space-y-2.5">
+                {categories.map((cat)=>{
+                  const n = countTasksInCat(cat.id);
+                  return(
+                    <div key={cat.id} className="rounded-2xl p-3"
+                      style={{background:CARD,border:`1px solid ${BORD}`,borderLeft:`3px solid ${cat.accent}`}}>
+                      <div className="flex items-center gap-3">
+                        <span style={{fontSize:26}}>{cat.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-black truncate" style={{color:cat.accent}}>{cat.label}</p>
+                          <p style={{fontSize:11,color:MUTED}}>
+                            {n} misión(es){cat.subs&&cat.subs.length>0?` · ${cat.subs.length} subcategoría(s)`:""}
+                          </p>
+                        </div>
+                        <button onClick={()=>setCatEditor({mode:"edit", cat:{...cat, subs:cat.subs?[...cat.subs]:[]}})}
+                          className="rounded-lg px-3 py-1.5 text-xs font-bold"
+                          style={{background:"#1a2a3a",color:"#60a5fa",border:"none",cursor:"pointer"}}>
+                          ✏️ Editar
+                        </button>
+                        <button onClick={()=>deleteCat(cat.id)}
+                          className="rounded-lg px-2.5 py-1.5 text-xs font-bold"
+                          style={{background:"#1f0707",color:"#ef4444",border:"none",cursor:"pointer"}}>
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <p style={{fontSize:10,color:MUTED,textAlign:"center",marginTop:14,lineHeight:1.4}}>
+                {categories.length}/20 categorías · Para eliminar una categoría con misiones, primero muévelas o elimínalas.
+              </p>
             </div>
           )}
 
@@ -2527,6 +2633,100 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
         </div>
       )}
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ CONFIRM MODAL (GAMIFIED) ━━━━━━━━━━━━━━━━ */}
+      {catEditor&&(()=>{
+        const c = catEditor.cat;
+        const setC = (patch)=> setCatEditor(prev=>({...prev, cat:{...prev.cat, ...patch}}));
+        return (
+          <div className="fixed inset-0 z-50 flex items-end justify-center"
+            style={{background:"rgba(0,0,0,0.8)",backdropFilter:"blur(6px)",animation:"fadeIn 0.2s ease-out"}}
+            onClick={()=>setCatEditor(null)}>
+            <div className="w-full max-w-md rounded-t-3xl overflow-y-auto"
+              style={{background:"linear-gradient(180deg,#0f1520,#0a0d18)",
+                border:`2px solid ${c.accent}`,borderBottom:"none",maxHeight:"90vh",
+                animation:"slideUp 0.28s ease-out",
+                userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none",WebkitTapHighlightColor:"transparent"}}
+              onClick={e=>e.stopPropagation()}>
+              <div style={{height:4,background:`linear-gradient(90deg,transparent,${c.accent},transparent)`}}/>
+              <div style={{padding:"20px 20px 24px"}}>
+                <p style={{fontSize:18,fontWeight:900,color:TXT,marginBottom:16,textAlign:"center"}}>
+                  {catEditor.mode==="new"?"Nueva categoría":"Editar categoría"}
+                </p>
+
+                {/* Nombre + icono */}
+                <div className="flex gap-2 mb-3">
+                  <input value={c.icon} onChange={e=>setC({icon:e.target.value})}
+                    placeholder="🙂" maxLength={2}
+                    style={{...inp,width:56,textAlign:"center",fontSize:24,padding:"8px 4px"}}/>
+                  <input value={c.label} onChange={e=>setC({label:e.target.value})}
+                    placeholder="Nombre de la categoría…" style={{...inp,flex:1}}/>
+                </div>
+
+                {/* Paleta de colores */}
+                <p style={{fontSize:11,color:MUTED,fontWeight:"bold",marginBottom:8}}>Color</p>
+                <div className="flex gap-2 flex-wrap mb-4">
+                  {CAT_COLORS.map((col,i)=>{
+                    const sel = c.accent===col.accent;
+                    return(
+                      <button key={i} onClick={()=>setC({accent:col.accent, dark:col.dark})}
+                        style={{width:36,height:36,borderRadius:10,cursor:"pointer",
+                          background:col.accent,
+                          border:sel?`3px solid #fff`:`2px solid ${BORD}`,
+                          boxShadow:sel?`0 0 12px ${col.accent}90`:"none",
+                          transform:sel?"scale(1.1)":"scale(1)",transition:"all 0.15s"}}/>
+                    );
+                  })}
+                </div>
+
+                {/* Subcategorías */}
+                <p style={{fontSize:11,color:MUTED,fontWeight:"bold",marginBottom:8}}>Subcategorías (opcional)</p>
+                <div className="space-y-2 mb-3">
+                  {(c.subs||[]).map((sub,idx)=>(
+                    <div key={sub.id} className="flex gap-2 items-center">
+                      <input value={sub.icon} onChange={e=>{
+                        const subs=[...c.subs]; subs[idx]={...subs[idx],icon:e.target.value}; setC({subs});
+                      }} placeholder="🙂" maxLength={2}
+                        style={{...inp,width:48,textAlign:"center",fontSize:18,padding:"8px 4px"}}/>
+                      <input value={sub.label} onChange={e=>{
+                        const subs=[...c.subs]; subs[idx]={...subs[idx],label:e.target.value}; setC({subs});
+                      }} placeholder="Nombre subcategoría…" style={{...inp,flex:1}}/>
+                      <button onClick={()=>{
+                        const subs=c.subs.filter((_,i)=>i!==idx); setC({subs});
+                      }} className="rounded-lg px-2.5 py-2 text-xs font-bold"
+                        style={{background:"#1f0707",color:"#ef4444",border:"none",cursor:"pointer"}}>✕</button>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={()=>{
+                  const subs=[...(c.subs||[]), {id:subSlugify(), label:"", icon:"📌"}]; setC({subs});
+                }} className="w-full rounded-xl py-2 text-xs font-bold mb-4"
+                  style={{background:CARD2,border:`1px solid ${BORD}`,color:MUTED,cursor:"pointer"}}>
+                  + Agregar subcategoría
+                </button>
+
+                {/* Botones guardar / cancelar */}
+                <div className="flex gap-2">
+                  <button onClick={()=>setCatEditor(null)}
+                    style={{flex:1,padding:"13px 0",borderRadius:14,cursor:"pointer",
+                      background:CARD,border:`1px solid ${BORD}`,color:MUTED,fontSize:13,fontWeight:"black"}}>
+                    Cancelar
+                  </button>
+                  <button onClick={()=>{
+                    const clean={...c, label:c.label.trim(),
+                      subs:(c.subs||[]).filter(s=>s.label&&s.label.trim()).map(s=>({...s,label:s.label.trim()}))};
+                    saveCat(clean);
+                  }}
+                    style={{flex:1.4,padding:"13px 0",borderRadius:14,cursor:"pointer",
+                      background:`linear-gradient(135deg,${c.accent},${c.accent})`,
+                      border:"none",color:"#fff",fontSize:13,fontWeight:"black",
+                      boxShadow:`0 0 20px ${c.accent}60`}}>
+                    ✓ Guardar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       {confirmModal&&(()=>{
         const m = confirmModal;
         const accent = m.accent || "#dc2626";
@@ -2627,7 +2827,7 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                   <div style={{fontSize:36}}>{t.icon}</div>
                   <div className="flex-1 min-w-0">
                     <p style={{fontSize:11,color:cat.accent,fontWeight:"black",textTransform:"uppercase",letterSpacing:1.5}}>
-                      {cat.label}{t.sub?` · ${t.sub==="uber"?"Uber":"Hinojosa"}`:""}
+                      {cat.label}{t.sub&&getSub(t.category,t.sub)?` · ${getSub(t.category,t.sub).label}`:""}
                     </p>
                     <p style={{fontSize:18,fontWeight:"black",color:TXT,marginTop:2}}>{t.name}</p>
                     <p style={{fontSize:11,color:MUTED,marginTop:2}}>
@@ -2737,13 +2937,19 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                     style={{fontSize:12,color:"#c4b5fd",background:"none",border:"none",cursor:"pointer",fontWeight:"bold",marginBottom:8}}>
                     ← Volver
                   </button>
-                  {[
-                    ["personal", null, "🧘", "Personal", "#e879f9", "#2e0a3c"],
-                    ["hogar", null, "🏠", "Hogar", "#10b981", "#052e16"],
-                    ["trabajo", "uber", "🚗", "Trabajo · Uber", "#d1d5db", "#1c1c1c"],
-                    ["trabajo", "inojosa", "🏢", "Trabajo · Hinojosa", "#f87171", "#1a0505"],
-                  ].map(([cat,sub,ico,lbl,accent,bg])=>{
-                    const isCurrent = t.category===cat && (t.sub||null)===sub;
+                  {categories.flatMap((catObj)=>{
+                    // Si la categoría tiene subcategorías, genera una opción por cada sub.
+                    // Si no tiene, genera una sola opción para la categoría.
+                    if(catObj.subs && catObj.subs.length>0){
+                      return catObj.subs.map(s=>({
+                        cat:catObj.id, sub:s.id, ico:s.icon,
+                        lbl:`${catObj.label} · ${s.label}`, accent:catObj.accent, bg:catObj.dark
+                      }));
+                    }
+                    return [{cat:catObj.id, sub:null, ico:catObj.icon,
+                      lbl:catObj.label, accent:catObj.accent, bg:catObj.dark}];
+                  }).map(({cat,sub,ico,lbl,accent,bg})=>{
+                    const isCurrent = t.category===cat && (t.sub||null)===(sub||null);
                     return (
                       <button key={cat+(sub||"")} onClick={()=>!isCurrent&&moveCategory(cat,sub)}
                         disabled={isCurrent}

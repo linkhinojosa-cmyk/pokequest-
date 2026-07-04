@@ -792,12 +792,15 @@ function MainApp({ user, onLogout }) {
     if(!catData.icon || !catData.icon.trim()){ showToast("Ponle un ícono (emoji)","🙂"); return false; }
     setCategories(prev => {
       const exists = prev.find(c => c.id === catData.id);
+      let updated;
       if(exists){
-        return prev.map(c => c.id === catData.id ? {...c, ...catData} : c);
+        updated = prev.map(c => c.id === catData.id ? {...c, ...catData} : c);
       } else {
         if(prev.length >= 20){ showToast("Máximo 20 categorías","🚫"); return prev; }
-        return [...prev, catData];
+        updated = [...prev, catData];
       }
+      pushCategorias(updated);
+      return updated;
     });
     setCatEditor(null);
     showToast("Categoría guardada","✅");
@@ -811,7 +814,11 @@ function MainApp({ user, onLogout }) {
       showToast(`Esta categoría tiene ${n} misión(es). Muévelas o elimínalas primero.`,"🚫");
       return;
     }
-    setCategories(prev => prev.filter(c => c.id !== catId));
+    setCategories(prev => {
+      const updated = prev.filter(c => c.id !== catId);
+      pushCategorias(updated);
+      return updated;
+    });
     showToast("Categoría eliminada","🗑️");
   };
   const [reorderMode, setReorderMode] = useState(false);
@@ -1045,6 +1052,10 @@ s.innerHTML=`
           return updated;
         });
         if (data.tareas && data.tareas.length > 0) setTasks(data.tareas);
+        if (Array.isArray(data.categorias) && data.categorias.length > 0) {
+          setCategories(data.categorias);
+          try{ localStorage.setItem(`pq-${user.username}-categories`, JSON.stringify(data.categorias)); }catch{}
+        }
         if (data.tareasCompletadas) {
           const today = TODAY();
           const cloudTodayIds = data.tareasCompletadas
@@ -1698,6 +1709,9 @@ const deleteFromSheet = async () => {
     badges:p.badges||[],
     coins:p.coins||0, totalCoinsEarned:p.totalCoinsEarned||0,
     weekStart:p.weekStart||"", weekCoinsEarned:p.weekCoinsEarned||0,
+  });
+  const pushCategorias = (cats) => cloudPost({
+    type:"categorias", usuario:user.displayName, categorias:cats
   });
   const pushTareaCompletada = (taskId) => cloudPost({
     type:"tarea_completada", usuario:user.displayName, fecha:TODAY(), task_id:taskId

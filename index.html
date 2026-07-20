@@ -568,14 +568,17 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
   const [gSending,  setGSending]  = useState(false);
   const [gSent,     setGSent]     = useState(false);
 
+  const gastosHoy    = player.gastosHoy      || 0;
   const gastosStreak = player.gastosStreakDays|| 0;
   const gastosTotal  = player.gastosTotal    || 0;
   const esHoy        = gFecha === todayStr;
+  const topeDiario   = gastosHoy >= 10;
 
   const handleRegistrar = async () => {
     if(!gMonto||isNaN(Number(gMonto.replace(/\./g,"").replace(",",".")))) {
       showToast("Ingresa un monto válido","⚠️"); return;
     }
+    if(topeDiario){ showToast("Máximo 10 gastos por día para evitar abuso","⚠️"); return; }
     setGSending(true);
 
     try {
@@ -698,12 +701,15 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
             <input type="text" placeholder="Descripción breve..." value={gComent}
               onChange={e=>setGComent(e.target.value)} style={inpG} maxLength={200}/></div>
 
+          {topeDiario&&(
+            <div className="rounded-xl p-3 text-xs text-center" style={{background:"#1a0a0a",color:"#f87171",border:"1px solid #991b1b"}}>
+              ⚠️ Límite diario alcanzado (10 gastos). Vuelve mañana.</div>)}
 
-          <button onClick={handleRegistrar} disabled={gSending || gSent}
+          <button onClick={handleRegistrar} disabled={gSending||gSent||topeDiario}
             className="w-full py-3.5 rounded-2xl font-black text-sm"
             style={{background:gSent?"#14532d":topeDiario?"#374151":"linear-gradient(135deg,#d97706,#fbbf24)",
-color:gSent?"#4ade80":topeDiario?"#6b7280":"#000",
-cursor:gSending||gSent||topeDiario?"not-allowed":"pointer",opacity:gSending?0.7:1,fontSize:16}}>
+              color:gSent?"#4ade80":topeDiario?"#6b7280":"#000",border:"none",
+              cursor:gSending||gSent||topeDiario?"not-allowed":"pointer",opacity:gSending?0.7:1,fontSize:16}}>
             {gSent?"✅ ¡Gasto registrado!":gSending?"Registrando...":"💸 Registrar Gasto"}
           </button>
         </div>
@@ -715,6 +721,7 @@ cursor:gSending||gSent||topeDiario?"not-allowed":"pointer",opacity:gSending?0.7:
         <p>• Gasto del día: +25 XP (10 base + 15 bono)</p>
         <p>• Gasto antiguo: +10 XP</p>
         <p>• 7 días seguidos: +100 XP extra</p>
+        <p>• Máx. 10 gastos/día · Sin monedas (previene abuso)</p>
       </div>
     </div>
   );

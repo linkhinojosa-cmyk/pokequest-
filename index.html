@@ -497,8 +497,9 @@ const COINS_PER_PESO = 100;
 const WEEKLY_CAP_PESOS = 30000;
 const WEEKLY_CAP_COINS = WEEKLY_CAP_PESOS * COINS_PER_PESO;
 // Monedas que otorga CADA gasto registrado (sin límite diario).
-// Ojo: 1000 monedas = $10 según COINS_PER_PESO. Si quieres $1.000 por gasto, pon 100000.
-const COINS_POR_GASTO = 50000;
+// $500 reales por gasto. Se guarda en monedas: 500 pesos × COINS_PER_PESO.
+const PESOS_POR_GASTO  = 500;
+const COINS_POR_GASTO  = PESOS_POR_GASTO * COINS_PER_PESO;
 const coinsToPesos = (c) => Math.floor((c||0)/COINS_PER_PESO);
 const formatPesos  = (p) => "$"+(p||0).toLocaleString("es-CL");
 const mondayOf = (dateStr) => {
@@ -669,7 +670,7 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
     pushEstado(newP);
 
     setGSending(false); setGSent(true);
-    const monedasTxt=`+${coinsGain.toLocaleString("es-CL")} 🪙`;
+    const monedasTxt=`+${formatPesos(PESOS_POR_GASTO)}`;
     const msg=xpBono>0
       ?`+${xpGain+xpBono} XP · ${monedasTxt} · 🔥 Racha: ${newStreakG}d`
       :`+${xpGain} XP · ${monedasTxt}${rachaBonus>0?` · 🎉 +${rachaBonus} XP racha!`:""}`;
@@ -685,7 +686,7 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
     <div className="max-w-md mx-auto px-4 pt-4 pb-32">
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2 mb-4">
-        {[["💸 "+gastosHoy,"Hoy","#fbbf24"],["🔥 "+gastosStreak+"d","Racha","#f87171"],["🪙 +"+COINS_POR_GASTO.toLocaleString("es-CL"),"Por gasto","#a78bfa"]].map(([val,lbl,col])=>(
+        {[["💸 "+gastosHoy,"Hoy","#fbbf24"],["🔥 "+gastosStreak+"d","Racha","#f87171"],["💰 "+formatPesos(PESOS_POR_GASTO),"Por gasto","#a78bfa"]].map(([val,lbl,col])=>(
           <div key={lbl} className="rounded-2xl p-3 text-center" style={{background:CARD,border:`1px solid ${BORD}`}}>
             <div className="text-lg font-black" style={{color:col}}>{val}</div>
             <div className="text-xs mt-0.5" style={{color:MUTED}}>{lbl}</div>
@@ -695,7 +696,7 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
 
       {/* Info XP */}
       <div className="rounded-2xl p-3 mb-4 text-xs" style={{background:"#0a1a0a",border:"1px solid #166534",color:"#4ade80"}}>
-        {esHoy?`✅ Gasto de hoy: +25 XP (10 base + 15 bono) + ${COINS_POR_GASTO.toLocaleString("es-CL")} monedas`:`📅 Gasto de otro día: +10 XP (sin bono) + ${COINS_POR_GASTO.toLocaleString("es-CL")} monedas`}
+        {esHoy?`✅ Gasto de hoy: +25 XP (10 base + 15 bono) + ${formatPesos(PESOS_POR_GASTO)}`:`📅 Gasto de otro día: +10 XP (sin bono) + ${formatPesos(PESOS_POR_GASTO)}`}
         {gastosStreak>0&&gastosStreak%7!==0&&<span> · ¡{7-gastosStreak%7} días para bono racha!</span>}
       </div>
 
@@ -751,7 +752,7 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
         <p>• Gasto del día: +25 XP (10 base + 15 bono)</p>
         <p>• Gasto antiguo: +10 XP</p>
         <p>• 7 días seguidos: +100 XP extra</p>
-        <p>• Cada gasto: +{COINS_POR_GASTO.toLocaleString("es-CL")} monedas ({formatPesos(coinsToPesos(COINS_POR_GASTO))})</p>
+        <p>• Cada gasto: +{formatPesos(PESOS_POR_GASTO)} a tu saldo</p>
         <p>• Sin límite de gastos por día ✅</p>
       </div>
     </div>
@@ -2139,7 +2140,7 @@ const todayStr      = TODAY();
           <div className="rounded-2xl p-3.5" style={{background:"rgba(0,0,0,0.5)",border:`1px solid ${BORD}`}}>
             <div className="flex justify-between items-center mb-2">
               <span className="text-xs font-bold" style={{color:"#e2e8f0"}}>Misiones de hoy</span>
-              <span className="text-xs font-black" style={{color:"#10b981"}}>{done.length}/{tasks.length} · {totalPct}%</span>
+              <span className="text-xs font-black" style={{color:"#10b981"}}>{done.filter(id=>visibleTasks.find(t=>t.id===id)).length}/{visibleTasks.length} · {totalPct}%</span>
             </div>
             <div className="h-3 rounded-full overflow-hidden" style={{background:"#1a1a38"}}>
               <div className="h-full rounded-full transition-all duration-700"
@@ -2735,7 +2736,9 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
 
               {categories.map((catInfo)=>{
                 const cat=catInfo.id;
-                const ct=tasks.filter(t=>t.category===cat && (!searchQuery || normalizeText(t.name).includes(normalizeText(searchQuery)))).sort((a,b)=>(a.order||0)-(b.order||0));if(!ct.length)return null;
+                const q=normalizeText(searchQuery);
+                const catMatch=!q || normalizeText(catInfo.label||"").includes(q) || normalizeText(cat).includes(q);
+                const ct=tasks.filter(t=>t.category===cat && (!q || catMatch || normalizeText(t.name).includes(q))).sort((a,b)=>(a.order||0)-(b.order||0));if(!ct.length)return null;
                 return(
                   <div key={cat} className="mb-4">
                     <div className="flex items-center gap-2 mb-2">

@@ -1100,6 +1100,8 @@ s.innerHTML=`
             badges: e.badges || [], caughtIds: mergedCaught,
             coins: e.coins, totalCoinsEarned: e.totalCoinsEarned,
             weekStart: e.weekStart, weekCoinsEarned: e.weekCoinsEarned,
+            caracolas: (typeof e.caracolas==="number" ? e.caracolas : prev.caracolas),
+            totalCaracolasEarned: (typeof e.totalCaracolasEarned==="number" ? e.totalCaracolasEarned : prev.totalCaracolasEarned),
           };
           try{ localStorage.setItem(`pq-${user.username}-player`, JSON.stringify(updated)); }catch{}
           return updated;

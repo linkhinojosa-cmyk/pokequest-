@@ -1205,6 +1205,7 @@ s.innerHTML=`
       if(i>=0){const u=[...prev];u[i]=entry;return u;}
       return [...prev,entry];
     });
+    pushDiario(entry);
   };
 
   // ── Complete task ───────────────────────────────────────────────────────────
@@ -1328,16 +1329,28 @@ s.innerHTML=`
     setPlayer(newP);
     try{ localStorage.setItem(`pq-${user.username}-player`, JSON.stringify(newP)); }catch{}
 
-    // Actualizar el historial diario si ya existe una fila de ese día
+    // Actualizar el historial diario del día recuperado (y subirlo al Sheet)
     setDailyStats(prev=>{
       const i=prev.findIndex(s=>s.fecha===fecha);
-      if(i<0) return prev;
+      if(i<0){
+        // No había fila de ese día: la creamos con el balance actual
+        const e={fecha,xp:xpGain,nivel:newP.level,racha:newP.streak,
+          completadas:1,total:tasks.length,
+          pct:tasks.length?Math.round(1/tasks.length*100):0,
+          capturados:(newP.caughtIds||[]).length,
+          monedas:newP.coins||0,pesos:coinsToPesos(newP.coins||0)};
+        pushDiario(e);
+        return [...prev,e];
+      }
       const u=[...prev];
       const e={...u[i]};
       e.xp=(e.xp||0)+xpGain;
       e.completadas=(e.completadas||0)+1;
       e.pct=e.total?Math.round(e.completadas/e.total*100):e.pct;
+      e.monedas=newP.coins||0;
+      e.pesos=coinsToPesos(newP.coins||0);
       u[i]=e;
+      pushDiario(e);
       return u;
     });
 
@@ -1839,7 +1852,28 @@ const deleteFromSheet = async () => {
     } catch { return null; }
   };
 
-  const pushEstado = (p) => cloudPost({
+  // ── Cola con debounce: agrupa estado+diario para no saturar el Sheet ──
+  const _pending = useRef({});      // {estado:payload, diario_<fecha>:payload}
+  const _timer   = useRef(null);
+  const flushQueue = () => {
+    const items = Object.values(_pending.current);
+    _pending.current = {};
+    items.forEach(p => cloudPost(p));  // cada uno en no-cors, sin bloquear UI
+  };
+  const enqueue = (key, payload) => {
+    _pending.current[key] = payload;
+    if (_timer.current) clearTimeout(_timer.current);
+    _timer.current = setTimeout(flushQueue, 800);
+  };
+  // Al cerrar/ocultar la app, vaciar la cola de inmediato
+  useEffect(() => {
+    const h = () => { if (document.visibilityState === "hidden") { if(_timer.current) clearTimeout(_timer.current); flushQueue(); } };
+    document.addEventListener("visibilitychange", h);
+    window.addEventListener("pagehide", h);
+    return () => { document.removeEventListener("visibilitychange", h); window.removeEventListener("pagehide", h); };
+  }, []);
+
+  const pushEstado = (p) => enqueue("estado", {
     type:"estado", usuario:user.displayName,
     level:p.level, xp:p.xp, totalXpEarned:p.totalXpEarned,
     streak:p.streak, totalDone:p.totalDone, lastDate:p.lastDate||"",
@@ -1852,6 +1886,12 @@ const deleteFromSheet = async () => {
   });
   const pushTareaCompletada = (taskId, fecha) => cloudPost({
     type:"tarea_completada", usuario:user.displayName, fecha:fecha||TODAY(), task_id:taskId
+  });
+  const pushDiario = (entry) => enqueue("diario_"+entry.fecha, {
+    type:"diario", usuario:user.displayName, fecha:entry.fecha,
+    xp:entry.xp, nivel:entry.nivel, racha:entry.racha, pct:entry.pct,
+    completadas:entry.completadas, capturados:entry.capturados,
+    monedas_balance:entry.monedas, pesos_balance:entry.pesos
   });
   const pushTareaDescompletada = (taskId) => cloudPost({
     type:"tarea_descompletada", usuario:user.displayName, fecha:TODAY(), task_id:taskId

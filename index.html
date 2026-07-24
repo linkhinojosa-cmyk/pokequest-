@@ -498,7 +498,7 @@ const WEEKLY_CAP_PESOS = 30000;
 const WEEKLY_CAP_COINS = WEEKLY_CAP_PESOS * COINS_PER_PESO;
 // Monedas que otorga CADA gasto registrado (sin límite diario).
 // Ojo: 1000 monedas = $10 según COINS_PER_PESO. Si quieres $1.000 por gasto, pon 100000.
-const COINS_POR_GASTO = 1000;
+const COINS_POR_GASTO = 50000;
 const coinsToPesos = (c) => Math.floor((c||0)/COINS_PER_PESO);
 const formatPesos  = (p) => "$"+(p||0).toLocaleString("es-CL");
 const mondayOf = (dateStr) => {

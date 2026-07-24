@@ -1081,6 +1081,7 @@ s.innerHTML=`
             badges:player.badges||[], coins:player.coins||0,
             totalCoinsEarned:player.totalCoinsEarned||0,
             weekStart:player.weekStart||"", weekCoinsEarned:player.weekCoinsEarned||0,
+            caracolas:player.caracolas||0, totalCaracolasEarned:player.totalCaracolasEarned||0,
           },
           tareas:tasks, pokedex:player.caughtIds,
           tareasCompletadas: done.map(id => ({fecha:TODAY(), task_id:id})),
@@ -1886,6 +1887,7 @@ const deleteFromSheet = async () => {
     badges:p.badges||[],
     coins:p.coins||0, totalCoinsEarned:p.totalCoinsEarned||0,
     weekStart:p.weekStart||"", weekCoinsEarned:p.weekCoinsEarned||0,
+    caracolas:p.caracolas||0, totalCaracolasEarned:p.totalCaracolasEarned||0,
   });
   const pushCategorias = (cats) => cloudPost({
     type:"categorias", usuario:user.displayName, categorias:cats

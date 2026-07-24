@@ -3837,7 +3837,7 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
             return(
               <button key={key} onClick={()=>setScreen(key)}
                 className="py-2 flex flex-col items-center gap-0.5 relative transition-all"
-                style={{color:active?"#f87171":MUTED}}>
+                style={{color:active?"#f87171":MUTED,paddingLeft:2,paddingRight:2,minWidth:0,overflow:"hidden"}}>
                 <span className="text-lg relative">
                   {ico}
                   {badge&&(
@@ -3847,7 +3847,7 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
                     </span>
                   )}
                 </span>
-                <span className="text-xs font-bold">{lbl}</span>
+                <span className="font-bold" style={{fontSize:10,lineHeight:1.1,maxWidth:"100%",textAlign:"center",whiteSpace:"nowrap"}}>{lbl}</span>
                 {active&&<div className="absolute bottom-0 inset-x-4 h-0.5 rounded-full" style={{background:"#f87171"}}/>}
               </button>
             );

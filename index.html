@@ -412,6 +412,32 @@ const TODAY = () => {
   const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
+// Devuelve una fecha "YYYY-MM-DD" desplazada n días (n negativo = pasado)
+const SHIFT_DAY = (dateStr, n) => {
+  const d = new Date(dateStr + "T12:00:00");
+  d.setDate(d.getDate() + n);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+// Últimos 7 días SIN incluir hoy (ayer → hace 7 días)
+const LAST_7_DAYS = (todayStr) => [1,2,3,4,5,6,7].map(n => SHIFT_DAY(todayStr, -n));
+const DIAS_ES  = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+const MESES_ES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const DATE_LABEL = (dateStr, todayStr) => {
+  if (dateStr === SHIFT_DAY(todayStr, -1)) return "Ayer";
+  const d = new Date(dateStr + "T12:00:00");
+  return `${DIAS_ES[d.getDay()]} ${d.getDate()} ${MESES_ES[d.getMonth()]}`;
+};
+// Fecha de creación de una misión personalizada (id tipo "c-1712345678901")
+const TASK_CREATED_DAY = (taskId) => {
+  const m = /^c-(\d{10,})$/.exec(taskId || "");
+  if (!m) return null;
+  const d = new Date(Number(m[1]));
+  if (isNaN(d.getTime())) return null;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+};
 const XP_FOR_LEVEL = (lvl) => Math.floor(120 * Math.pow(lvl, 1.6));
 const LEVEL_TITLE = (lvl) => lvl>=20?"✨ Legendaria":lvl>=10?"🦸 Maestra":lvl>=5?"⚔️ Entrenadora":"🌱 Recluta";
 
@@ -470,6 +496,9 @@ const shouldShowToday = (task, dateStr) => {
 const COINS_PER_PESO = 100;
 const WEEKLY_CAP_PESOS = 30000;
 const WEEKLY_CAP_COINS = WEEKLY_CAP_PESOS * COINS_PER_PESO;
+// Monedas que otorga CADA gasto registrado (sin límite diario).
+// Ojo: 1000 monedas = $10 según COINS_PER_PESO. Si quieres $1.000 por gasto, pon 100000.
+const COINS_POR_GASTO = 1000;
 const coinsToPesos = (c) => Math.floor((c||0)/COINS_PER_PESO);
 const formatPesos  = (p) => "$"+(p||0).toLocaleString("es-CL");
 const mondayOf = (dateStr) => {
@@ -572,13 +601,11 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
   const gastosStreak = player.gastosStreakDays|| 0;
   const gastosTotal  = player.gastosTotal    || 0;
   const esHoy        = gFecha === todayStr;
-  const topeDiario   = gastosHoy >= 10;
 
   const handleRegistrar = async () => {
     if(!gMonto||isNaN(Number(gMonto.replace(/\./g,"").replace(",",".")))) {
       showToast("Ingresa un monto válido","⚠️"); return;
     }
-    if(topeDiario){ showToast("Máximo 10 gastos por día para evitar abuso","⚠️"); return; }
     setGSending(true);
 
     try {
@@ -630,15 +657,22 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
     if(newStreakG>0&&newStreakG%7===0&&lastG!==today2) rachaBonus=100;
     if(rachaBonus>0){newXp+=rachaBonus;newTotalXp+=rachaBonus;}
 
+    // Monedas por gasto: sin límite diario y sin consumir el tope semanal de misiones
+    const coinsGain = COINS_POR_GASTO;
+
     const newP={...player,xp:newXp,totalXpEarned:newTotalXp,level:newLevel,badges:newBadges,
+      coins:(player.coins||0)+coinsGain,
+      totalCoinsEarned:(player.totalCoinsEarned||0)+coinsGain,
       gastosTotal:newGastosTotal,gastosStreakDays:newStreakG,gastosLastDate:today2,gastosHoy:newGastosHoy};
     setPlayer(newP);
+    try{ localStorage.setItem(`pq-${user.username}-player`, JSON.stringify(newP)); }catch{}
     pushEstado(newP);
 
     setGSending(false); setGSent(true);
+    const monedasTxt=`+${coinsGain.toLocaleString("es-CL")} 🪙`;
     const msg=xpBono>0
-      ?`+${xpGain+xpBono} XP · Gasto registrado · 🔥 Racha: ${newStreakG}d`
-      :`+${xpGain} XP · Gasto registrado${rachaBonus>0?` · 🎉 +${rachaBonus} XP racha!`:""}`;
+      ?`+${xpGain+xpBono} XP · ${monedasTxt} · 🔥 Racha: ${newStreakG}d`
+      :`+${xpGain} XP · ${monedasTxt}${rachaBonus>0?` · 🎉 +${rachaBonus} XP racha!`:""}`;
     showToast(msg,"💸");
     if(rachaBonus>0) setTimeout(()=>showToast(`🎉 ¡${newStreakG} días de racha! +${rachaBonus} XP bonus`,"🏆"),1500);
     setTimeout(()=>{setGMonto("");setGComent("");setGFecha(todayStr);setGSent(false);},2000);
@@ -651,7 +685,7 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
     <div className="max-w-md mx-auto px-4 pt-4 pb-32">
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2 mb-4">
-        {[["💸 "+gastosHoy,"Hoy","#fbbf24"],["🔥 "+gastosStreak+"d","Racha","#f87171"],["⭐ +"+(esHoy?25:10),"XP al reg.","#a78bfa"]].map(([val,lbl,col])=>(
+        {[["💸 "+gastosHoy,"Hoy","#fbbf24"],["🔥 "+gastosStreak+"d","Racha","#f87171"],["🪙 +"+COINS_POR_GASTO.toLocaleString("es-CL"),"Por gasto","#a78bfa"]].map(([val,lbl,col])=>(
           <div key={lbl} className="rounded-2xl p-3 text-center" style={{background:CARD,border:`1px solid ${BORD}`}}>
             <div className="text-lg font-black" style={{color:col}}>{val}</div>
             <div className="text-xs mt-0.5" style={{color:MUTED}}>{lbl}</div>
@@ -661,7 +695,7 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
 
       {/* Info XP */}
       <div className="rounded-2xl p-3 mb-4 text-xs" style={{background:"#0a1a0a",border:"1px solid #166534",color:"#4ade80"}}>
-        {esHoy?"✅ Registrando gastos de hoy: +10 XP base + 15 XP bono = 25 XP":"📅 Registrando gasto de otro día: +10 XP (sin bono)"}
+        {esHoy?`✅ Gasto de hoy: +25 XP (10 base + 15 bono) + ${COINS_POR_GASTO.toLocaleString("es-CL")} monedas`:`📅 Gasto de otro día: +10 XP (sin bono) + ${COINS_POR_GASTO.toLocaleString("es-CL")} monedas`}
         {gastosStreak>0&&gastosStreak%7!==0&&<span> · ¡{7-gastosStreak%7} días para bono racha!</span>}
       </div>
 
@@ -701,15 +735,11 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
             <input type="text" placeholder="Descripción breve..." value={gComent}
               onChange={e=>setGComent(e.target.value)} style={inpG} maxLength={200}/></div>
 
-          {topeDiario&&(
-            <div className="rounded-xl p-3 text-xs text-center" style={{background:"#1a0a0a",color:"#f87171",border:"1px solid #991b1b"}}>
-              ⚠️ Límite diario alcanzado (10 gastos). Vuelve mañana.</div>)}
-
-          <button onClick={handleRegistrar} disabled={gSending||gSent||topeDiario}
+          <button onClick={handleRegistrar} disabled={gSending||gSent}
             className="w-full py-3.5 rounded-2xl font-black text-sm"
-            style={{background:gSent?"#14532d":topeDiario?"#374151":"linear-gradient(135deg,#d97706,#fbbf24)",
-              color:gSent?"#4ade80":topeDiario?"#6b7280":"#000",border:"none",
-              cursor:gSending||gSent||topeDiario?"not-allowed":"pointer",opacity:gSending?0.7:1,fontSize:16}}>
+            style={{background:gSent?"#14532d":"linear-gradient(135deg,#d97706,#fbbf24)",
+              color:gSent?"#4ade80":"#000",border:"none",
+              cursor:gSending||gSent?"not-allowed":"pointer",opacity:gSending?0.7:1,fontSize:16}}>
             {gSent?"✅ ¡Gasto registrado!":gSending?"Registrando...":"💸 Registrar Gasto"}
           </button>
         </div>
@@ -721,7 +751,8 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
         <p>• Gasto del día: +25 XP (10 base + 15 bono)</p>
         <p>• Gasto antiguo: +10 XP</p>
         <p>• 7 días seguidos: +100 XP extra</p>
-        <p>• Máx. 10 gastos/día · Sin monedas (previene abuso)</p>
+        <p>• Cada gasto: +{COINS_POR_GASTO.toLocaleString("es-CL")} monedas ({formatPesos(coinsToPesos(COINS_POR_GASTO))})</p>
+        <p>• Sin límite de gastos por día ✅</p>
       </div>
     </div>
   );
@@ -754,6 +785,9 @@ function MainApp({ user, onLogout }) {
   const [descCache,    setDescCache]    = useState({});
   const [missedYesterday, setMissedYesterday] = useState([]); // task IDs not done yesterday
   const [xpLostYesterday, setXpLostYesterday] = useState(0); // XP lost from missed tasks
+  const [weekDone,    setWeekDone]    = useState({});     // {"YYYY-MM-DD": [taskId,...]} últimos 7 días
+  const [pendingOpen, setPendingOpen] = useState(false);  // panel de pendientes de la semana
+  const [openDay,     setOpenDay]     = useState(null);   // día expandido dentro del panel
   const [newT,       setNewT]       = useState({name:"",category:"personal",difficulty:"easy",icon:"✅",sub:"uber",frequency:"daily",freqConfig:null,fechaInicio:"",fechaFin:""});
   // Bottom sheet para editar tareas (long-press en modo Editar)
   // Modo reordenar: activado desde el botón "🔀 Reordenar"
@@ -976,12 +1010,14 @@ s.innerHTML=`
         const r=await _store.get(`pq-${user.username}-done-${today}`);
         setDone(r ? JSON.parse(r.value) : []);
       }catch{ setDone([]); }
-      // Limpiar claves 'done' y 'xp' de días anteriores (evita basura acumulada)
+      // Limpiar claves 'done' y 'xp' con MÁS de 7 días de antigüedad.
+      // Conservamos la última semana para poder recuperar misiones sin marcar.
+      const keepDays = [today, ...LAST_7_DAYS(today)];
       try{
         for(let i=0;i<localStorage.length;i++){
           const key=localStorage.key(i);
           if(key && (key.startsWith(`pq-${user.username}-done-`) || key.startsWith(`pq-${user.username}-xp-`))){
-            if(!key.endsWith(today)){ localStorage.removeItem(key); i--; }
+            if(!keepDays.some(d=>key.endsWith(d))){ localStorage.removeItem(key); i--; }
           }
         }
       }catch{}
@@ -992,19 +1028,24 @@ s.innerHTML=`
         else setTodayXp(0);  // Si no hay XP de hoy, arrancar en 0
       }catch{ setTodayXp(0); }
 
-      // ── Detect missed tasks from yesterday ────────────────────────────────
-      const yest=new Date(today); yest.setDate(yest.getDate()-1);
-      const yStr=yest.toISOString().split("T")[0];
+      // ── Historial de la última semana (para recuperar misiones sin marcar) ──
+      const yStr=SHIFT_DAY(today,-1);
       try{
-        const r=await _store.get(`pq-${user.username}-done-${yStr}`);
-        if(r){
-          const yDone=JSON.parse(r.value);
-          // Only flag missed if player was actually active yesterday (≥1 task done)
-          if(yDone.length>0){
-            const missed=loadedTasks.filter(t=>!yDone.includes(t.id));
-            setMissedYesterday(missed.map(t=>t.id));
-            setXpLostYesterday(missed.reduce((s,t)=>s+DIFF[t.difficulty].xp,0));
-          }
+        const wd={};
+        for(const dStr of LAST_7_DAYS(today)){
+          try{
+            const rr=await _store.get(`pq-${user.username}-done-${dStr}`);
+            wd[dStr]= rr ? JSON.parse(rr.value) : [];
+          }catch{ wd[dStr]=[]; }
+        }
+        setWeekDone(wd);
+
+        // Aviso de ayer (solo si ayer hubo actividad)
+        const yDone=wd[yStr]||[];
+        if(yDone.length>0){
+          const missed=loadedTasks.filter(t=>shouldShowToday(t,yStr)&&!yDone.includes(t.id));
+          setMissedYesterday(missed.map(t=>t.id));
+          setXpLostYesterday(missed.reduce((s,t)=>s+DIFF[t.difficulty].xp,0));
         }
       }catch{}
 
@@ -1074,6 +1115,19 @@ s.innerHTML=`
           setDone(prevDone => {
             const merged = Array.from(new Set([...prevDone, ...cloudTodayIds]));
             try{ localStorage.setItem(`pq-${user.username}-done-${today}`, JSON.stringify(merged)); }catch{}
+            return merged;
+          });
+          // Merge de los últimos 7 días (historial de pendientes)
+          setWeekDone(prev => {
+            const merged = {...prev};
+            LAST_7_DAYS(today).forEach(dStr => {
+              const cloudIds = data.tareasCompletadas
+                .filter(tc => String(tc.fecha).slice(0,10) === dStr)
+                .map(tc => tc.task_id);
+              const u = Array.from(new Set([...(merged[dStr]||[]), ...cloudIds]));
+              merged[dStr] = u;
+              try{ localStorage.setItem(`pq-${user.username}-done-${dStr}`, JSON.stringify(u)); }catch{}
+            });
             return merged;
           });
         }
@@ -1238,6 +1292,75 @@ s.innerHTML=`
         }
       };
   
+
+  // ── Completar una misión atrasada (últimos 7 días) ──────────────────────────
+  // No toca la racha ni lastDate: solo recupera XP, monedas y caracolas.
+  const completePast=(task,fecha)=>{
+    const already=weekDone[fecha]||[];
+    if(already.includes(task.id))return;
+    const newDayDone=[...already,task.id];
+    setWeekDone(prev=>({...prev,[fecha]:newDayDone}));
+    try{ localStorage.setItem(`pq-${user.username}-done-${fecha}`, JSON.stringify(newDayDone)); }catch{}
+
+    const today=TODAY();
+    const xpGain=DIFF[task.difficulty].xp;
+    const coinReward=DIFF[task.difficulty].coins;
+
+    let {xp,totalXpEarned,level,totalDone,coins,totalCoinsEarned,weekStart,weekCoinsEarned}=player;
+
+    // Reset del tope semanal si cambió la semana
+    const monday=mondayOf(today);
+    if(weekStart!==monday){ weekStart=monday; weekCoinsEarned=0; }
+
+    xp+=xpGain; totalXpEarned+=xpGain; totalDone++;
+    let leveled=false;
+    while(xp>=XP_FOR_LEVEL(level)){xp-=XP_FOR_LEVEL(level);level++;leveled=true;}
+
+    const capRoom  = Math.max(0, WEEKLY_CAP_COINS - weekCoinsEarned);
+    const coinGain = Math.min(coinReward, capRoom);
+    coins            += coinGain;
+    totalCoinsEarned += coinGain;
+    weekCoinsEarned  += coinGain;
+
+    const newP={...player,xp,totalXpEarned,level,totalDone,coins,totalCoinsEarned,weekStart,weekCoinsEarned,
+      caracolas:(player.caracolas||0)+xpGain,
+      totalCaracolasEarned:(player.totalCaracolasEarned||0)+xpGain};
+    setPlayer(newP);
+    try{ localStorage.setItem(`pq-${user.username}-player`, JSON.stringify(newP)); }catch{}
+
+    // Actualizar el historial diario si ya existe una fila de ese día
+    setDailyStats(prev=>{
+      const i=prev.findIndex(s=>s.fecha===fecha);
+      if(i<0) return prev;
+      const u=[...prev];
+      const e={...u[i]};
+      e.xp=(e.xp||0)+xpGain;
+      e.completadas=(e.completadas||0)+1;
+      e.pct=e.total?Math.round(e.completadas/e.total*100):e.pct;
+      u[i]=e;
+      return u;
+    });
+
+    // Si era de ayer, quitarla del aviso
+    if(fecha===SHIFT_DAY(today,-1)){
+      setMissedYesterday(prev=>prev.filter(id=>id!==task.id));
+      setXpLostYesterday(v=>Math.max(0,v-xpGain));
+    }
+
+    flashXP(xpGain,DIFF[task.difficulty].glow);
+    pushEstado(newP);
+    pushTareaCompletada(task.id,fecha);
+
+    // Misiones de tipo "única": archivar al completarlas
+    if(task.frequency==="once"){
+      const updatedTasks=tasks.map(t=>t.id===task.id?{...t,archived:true}:t);
+      setTasks(updatedTasks);
+      pushTareasFull(updatedTasks);
+    }
+
+    if(leveled) showToast(`¡Subiste al Nivel ${level}! ${LEVEL_TITLE(level)}`,"🆙");
+    else showToast(`Recuperada · +${xpGain} XP · +${formatPesos(coinsToPesos(coinGain))}`,"⏪");
+  };
 
   const uncomplete=(task)=>{
     const newDone=done.filter(id=>id!==task.id);
@@ -1727,8 +1850,8 @@ const deleteFromSheet = async () => {
   const pushCategorias = (cats) => cloudPost({
     type:"categorias", usuario:user.displayName, categorias:cats
   });
-  const pushTareaCompletada = (taskId) => cloudPost({
-    type:"tarea_completada", usuario:user.displayName, fecha:TODAY(), task_id:taskId
+  const pushTareaCompletada = (taskId, fecha) => cloudPost({
+    type:"tarea_completada", usuario:user.displayName, fecha:fecha||TODAY(), task_id:taskId
   });
   const pushTareaDescompletada = (taskId) => cloudPost({
     type:"tarea_descompletada", usuario:user.displayName, fecha:TODAY(), task_id:taskId
@@ -1883,6 +2006,20 @@ const todayStr      = TODAY();
    .filter(t => !hideCompleted || !done.includes(t.id));
   const pdList        = pdFilter==="available"?availableList:pdFilter==="caught"?caughtList:POKEMON;
 
+  // ── Pendientes de los últimos 7 días (sin contar hoy) ───────────────────────
+  const weekPending = LAST_7_DAYS(todayStr).map(fecha=>{
+    const dayDone = weekDone[fecha] || [];
+    const pendientes = tasks.filter(t=>{
+      if(!shouldShowToday(t, fecha)) return false;     // respeta frecuencia, vigencia y archivadas
+      if(dayDone.includes(t.id))     return false;     // ya marcada ese día
+      const creada = TASK_CREATED_DAY(t.id);           // no mostrar días previos a su creación
+      if(creada && fecha < creada)   return false;
+      return true;
+    }).sort((a,b)=>(a.order||0)-(b.order||0));
+    return {fecha, pendientes, hechas:dayDone.length};
+  });
+  const weekPendingCount = weekPending.reduce((s,d)=>s+d.pendientes.length,0);
+
   if(!ready) return(
     <div style={{background:BG,color:"#e879f9",minHeight:"100vh"}} className="flex items-center justify-center">
       <p className="text-base font-bold animate-pulse">📕 Cargando PokéQuest…</p>
@@ -2001,21 +2138,66 @@ const todayStr      = TODAY();
             </div>
           )}
 
-          {/* ── Misiones perdidas ayer ── */}
-          {missedYesterday.length>0&&(
-            <div className="rounded-2xl p-3.5 mb-4"
+          {/* ── Pendientes de la última semana ── */}
+          {weekPendingCount>0&&(
+            <div className="rounded-2xl mb-4 overflow-hidden"
               style={{background:"#1c0a00",border:"1px solid #d9770660"}}>
-              <div className="flex items-start gap-2.5">
-                <span style={{fontSize:20,flexShrink:0}}>⚠️</span>
-                <div>
+              <button onClick={()=>setPendingOpen(o=>!o)}
+                className="w-full flex items-center gap-2.5 p-3.5 text-left"
+                style={{background:"transparent",border:"none",cursor:"pointer"}}>
+                <span style={{fontSize:20,flexShrink:0}}>⏪</span>
+                <div className="flex-1 min-w-0">
                   <p style={{fontSize:13,fontWeight:"black",color:"#fbbf24",marginBottom:2}}>
-                    Ayer perdiste {missedYesterday.length} {missedYesterday.length===1?"misión":"misiones"}
+                    Pendientes de la semana ({weekPendingCount})
                   </p>
-                  <p style={{fontSize:12,color:"#92400e"}}>
-                    −{xpLostYesterday} XP no ganados · Las misiones están marcadas abajo
+                  <p style={{fontSize:11,color:"#b45309"}}>
+                    Márcalas y recupera XP, monedas y caracolas · últimos 7 días
                   </p>
                 </div>
-              </div>
+                <span style={{color:"#fbbf24",fontSize:12,flexShrink:0}}>{pendingOpen?"▲":"▼"}</span>
+              </button>
+
+              {pendingOpen&&(
+                <div className="px-3 pb-3 space-y-2">
+                  {weekPending.map(({fecha,pendientes,hechas})=> pendientes.length===0?null:(
+                    <div key={fecha} className="rounded-xl overflow-hidden" style={{background:BG,border:`1px solid ${BORD}`}}>
+                      <button onClick={()=>setOpenDay(d=>d===fecha?null:fecha)}
+                        className="w-full flex items-center justify-between px-3 py-2.5"
+                        style={{background:"transparent",border:"none",cursor:"pointer"}}>
+                        <span style={{fontSize:12,fontWeight:"bold",color:TXT}}>
+                          {DATE_LABEL(fecha,todayStr)}
+                          <span style={{color:MUTED,fontWeight:"normal"}}> · {hechas} hechas</span>
+                        </span>
+                        <span style={{fontSize:11,color:"#f59e0b",fontWeight:"black"}}>
+                          {pendientes.length} sin marcar {openDay===fecha?"▲":"▼"}
+                        </span>
+                      </button>
+                      {openDay===fecha&&(
+                        <div className="px-2 pb-2 space-y-1.5">
+                          {pendientes.map(t=>{
+                            const d=DIFF[t.difficulty];
+                            return(
+                              <div key={t.id} className="flex items-center gap-2 rounded-lg px-2 py-2"
+                                style={{background:CARD,border:`1px solid ${DIM}`}}>
+                                <span style={{fontSize:16,flexShrink:0}}>{t.icon}</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="truncate" style={{fontSize:12,color:TXT}}>{t.name}</p>
+                                  <p style={{fontSize:10,color:d.color,fontWeight:"bold"}}>
+                                    +{d.xp} XP · +{formatPesos(coinsToPesos(d.coins))}
+                                  </p>
+                                </div>
+                                <button onClick={()=>completePast(t,fecha)}
+                                  className="rounded-lg px-3 py-1.5 text-xs font-black active:scale-95"
+                                  style={{background:"#f59e0b",color:"#000",border:"none",cursor:"pointer",flexShrink:0}}>✓</button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           <button onClick={()=>setBadgesOpen(o=>!o)}

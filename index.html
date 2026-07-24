@@ -1059,6 +1059,8 @@ s.innerHTML=`
     if (!ready) return;
     let cancelled = false;
     (async () => {
+      // Subir cualquier cambio pendiente ANTES de leer, para no perderlo si el Sheet "gana"
+      if (_flushRef.current) _flushRef.current();
       const data = await cloudGet("load", {usuario: user.displayName});
       if (cancelled || !data || !data.ok) { setCloudReady(true); return; }
       setIsAdmin(!!data.isAdmin);
@@ -1856,11 +1858,14 @@ const deleteFromSheet = async () => {
   // ── Cola con debounce: agrupa estado+diario para no saturar el Sheet ──
   const _pending = useRef({});      // {estado:payload, diario_<fecha>:payload}
   const _timer   = useRef(null);
+  const _flushRef = useRef(null);
   const flushQueue = () => {
+    if (_timer.current) { clearTimeout(_timer.current); _timer.current = null; }
     const items = Object.values(_pending.current);
     _pending.current = {};
     items.forEach(p => cloudPost(p));  // cada uno en no-cors, sin bloquear UI
   };
+  _flushRef.current = flushQueue;
   const enqueue = (key, payload) => {
     _pending.current[key] = payload;
     if (_timer.current) clearTimeout(_timer.current);

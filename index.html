@@ -579,7 +579,7 @@ const gridSprite = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/ma
 const artSprite  = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
 
 // ─── GastosScreen ─────────────────────────────────────────────────────────────
-function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CARD, BORD, MUTED, API_SECRET }) {
+function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CARD, BORD, MUTED, API_SECRET, cloudGet }) {
   const CATEGORIAS=["Alimentación","Supermercado","Restaurantes","Cafeterías","Delivery","Transporte","Combustible","Uber/Taxi","Locomoción colectiva","Salud","Farmacia","Médico","Educación","Cursos","Libros","Entretención","Streaming","Videojuegos","Ropa","Calzado","Accesorios","Hogar","Arriendo","Servicios básicos","Internet","Teléfono","Mascotas","Belleza","Deporte","Ahorro","Inversión","Regalo","Otro"];
   const MEDIOS_PAGO=["Crédito","Débito","Efectivo","Transferencia","Prepago"];
   const PRIORIDADES=["Esencial","Importante","Prescindible"];
@@ -597,6 +597,31 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
   const [gCorrespon,setGCorrespon]= useState(CORRESPONDE[0]);
   const [gSending,  setGSending]  = useState(false);
   const [gSent,     setGSent]     = useState(false);
+  const [gastosList,setGastosList]= useState([]);
+  const [gLoading,  setGLoading]  = useState(true);
+  const now = new Date();
+  const [pMes,  setPMes]  = useState(now.getMonth()+1);   // 1-12
+  const [pAnio, setPAnio] = useState(now.getFullYear());
+
+  const cargarGastos = async () => {
+    setGLoading(true);
+    const r = await cloudGet("gastos", { usuario: user.displayName });
+    if (r && r.ok && Array.isArray(r.gastos)) setGastosList(r.gastos);
+    setGLoading(false);
+  };
+  useEffect(() => { cargarGastos(); }, []);
+
+  // Recalcular al cambiar de período seleccionado
+  const gastosDelPeriodo = gastosList.filter(g => {
+    const f = String(g.fecha||"");
+    const y = Number(f.slice(0,4)), m = Number(f.slice(5,7));
+    return y===pAnio && m===pMes;
+  });
+  const esFijo = (g) => String(g.gasto_fijo||"").toLowerCase().startsWith("s"); // "Sí"
+  const totalFijo     = gastosDelPeriodo.filter(esFijo).reduce((s,g)=>s+(g.monto||0),0);
+  const totalVariable = gastosDelPeriodo.filter(g=>!esFijo(g)).reduce((s,g)=>s+(g.monto||0),0);
+  const ultimos5 = gastosList.slice(0,5);
+  const MESES_NOM = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
   const gastosHoy    = player.gastosHoy      || 0;
   const gastosStreak = player.gastosStreakDays|| 0;
@@ -677,6 +702,8 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
     showToast(msg,"💸");
     if(rachaBonus>0) setTimeout(()=>showToast(`🎉 ¡${newStreakG} días de racha! +${rachaBonus} XP bonus`,"🏆"),1500);
     setTimeout(()=>{setGMonto("");setGComent("");setGFecha(todayStr);setGSent(false);},2000);
+    // El Sheet tarda ~1-2s en reflejar; recargamos después de un momento
+    setTimeout(()=>{cargarGastos();},2500);
   };
 
   const inpG={...inp,width:"100%",marginBottom:0};
@@ -692,6 +719,58 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
             <div className="text-xs mt-0.5" style={{color:MUTED}}>{lbl}</div>
           </div>
         ))}
+      </div>
+      {/* ── Resumen por período ── */}
+      <div className="rounded-2xl p-3 mb-4" style={{background:CARD,border:`1px solid ${BORD}`}}>
+        <div className="flex items-center gap-2 mb-3">
+          <span style={{fontSize:13,fontWeight:"bold",color:"#e2e8f0",flex:1}}>📊 Resumen del período</span>
+          <select value={pMes} onChange={e=>setPMes(Number(e.target.value))}
+            style={{...inpG,width:"auto",marginBottom:0,padding:"6px 8px",fontSize:13}}>
+            {MESES_NOM.map((m,i)=><option key={i} value={i+1}>{m}</option>)}
+          </select>
+          <select value={pAnio} onChange={e=>setPAnio(Number(e.target.value))}
+            style={{...inpG,width:"auto",marginBottom:0,padding:"6px 8px",fontSize:13}}>
+            {[now.getFullYear(),now.getFullYear()-1,now.getFullYear()-2].map(y=><option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <div className="rounded-xl p-3 text-center" style={{background:"#1a1005",border:"1px solid #92400e"}}>
+            <div style={{fontSize:11,color:"#fbbf24",marginBottom:2}}>🔄 Variable</div>
+            <div style={{fontSize:17,fontWeight:"black",color:"#fbbf24"}}>{formatPesos(totalVariable)}</div>
+          </div>
+          <div className="rounded-xl p-3 text-center" style={{background:"#0a1420",border:"1px solid #1e40af"}}>
+            <div style={{fontSize:11,color:"#60a5fa",marginBottom:2}}>📌 Fijo</div>
+            <div style={{fontSize:17,fontWeight:"black",color:"#60a5fa"}}>{formatPesos(totalFijo)}</div>
+          </div>
+        </div>
+        <div className="rounded-xl p-2 text-center" style={{background:BG,border:`1px solid ${BORD}`}}>
+          <span style={{fontSize:11,color:MUTED}}>Total del período: </span>
+          <span style={{fontSize:14,fontWeight:"black",color:"#e2e8f0"}}>{formatPesos(totalVariable+totalFijo)}</span>
+          <span style={{fontSize:11,color:MUTED}}> · {gastosDelPeriodo.length} gastos</span>
+        </div>
+      </div>
+
+      {/* ── Últimos 5 gastos ── */}
+      <div className="rounded-2xl p-3 mb-4" style={{background:CARD,border:`1px solid ${BORD}`}}>
+        <div style={{fontSize:13,fontWeight:"bold",color:"#e2e8f0",marginBottom:8}}>🧾 Últimos 5 gastos</div>
+        {gLoading?(
+          <div style={{fontSize:12,color:MUTED,textAlign:"center",padding:"8px 0"}}>Cargando…</div>
+        ):ultimos5.length===0?(
+          <div style={{fontSize:12,color:MUTED,textAlign:"center",padding:"8px 0"}}>Aún no hay gastos registrados</div>
+        ):(
+          <div className="space-y-1.5">
+            {ultimos5.map(g=>(
+              <div key={g.id} className="flex items-center gap-2 rounded-lg px-2.5 py-2" style={{background:BG,border:`1px solid ${BORD}`}}>
+                <span style={{fontSize:14,flexShrink:0}}>{esFijo(g)?"📌":"🔄"}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="truncate" style={{fontSize:12,color:"#e2e8f0"}}>{g.categoria}</p>
+                  <p style={{fontSize:10,color:MUTED}}>{String(g.fecha).slice(0,10)}</p>
+                </div>
+                <span style={{fontSize:13,fontWeight:"black",color:"#e2e8f0",flexShrink:0}}>{formatPesos(g.monto)}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Info XP */}
@@ -3816,7 +3895,7 @@ Reporte semanal,trabajo,medium,📊,inojosa`}
 
       {/* ═══════════════════════════════════════ GASTOS SCREEN ══════════════════ */}
 
-        {screen==="gastos"&&(<GastosScreen player={player} setPlayer={setPlayer} pushEstado={pushEstado} showToast={showToast} user={user} inp={inp} CARD={CARD} BORD={BORD} MUTED={MUTED} API_SECRET={API_SECRET}/>)}
+        {screen==="gastos"&&(<GastosScreen player={player} setPlayer={setPlayer} pushEstado={pushEstado} showToast={showToast} user={user} inp={inp} CARD={CARD} BORD={BORD} MUTED={MUTED} API_SECRET={API_SECRET} cloudGet={cloudGet}/>)}
 
 
       <div className="fixed bottom-0 inset-x-0" style={{

@@ -560,9 +560,9 @@ const BADGES_DEF = [
 const DEFAULT_PLAYER = {
   level:1, xp:0, totalXpEarned:0, streak:0, totalDone:0,
   lastDate:null, badges:[], caughtIds:[],
-  coins:0, totalCoinsEarned:0, weekStart:null, weekCoinsEarned:0,
+  coins:0, totalCoinsEarned:0, totalCoinsSpent:0, weekStart:null, weekCoinsEarned:0,
   gastosTotal:0, gastosStreakDays:0, gastosLastDate:null, gastosHoy:0,
-  caracolas:0, totalCaracolasEarned:0,
+  caracolas:0, totalCaracolasEarned:0, totalCaracolasSpent:0,
 };
 
 // ─── Style tokens ─────────────────────────────────────────────────────────────
@@ -1059,6 +1059,11 @@ s.innerHTML=`
           if(typeof p.coins!=="number")            p.coins=0;
           if(typeof p.totalCoinsEarned!=="number") p.totalCoinsEarned=0;
           if(typeof p.weekCoinsEarned!=="number")  p.weekCoinsEarned=0;
+          // ── Sembrar spent inicial: derivamos gastado = ganado − saldo actual,
+          //    así el saldo derivado (earned−spent) coincide con el saldo real de hoy.
+          if(typeof p.totalCoinsSpent!=="number"){
+            p.totalCoinsSpent = Math.max(0, (p.totalCoinsEarned||0) - (p.coins||0));
+          }
           if(typeof p.gastosTotal!=="number")      p.gastosTotal=0;
           // ── Migración suave: caracolas ──
           // Si ya tienes Pokémon atrapados sin haber gastado caracolas, descontamos.
@@ -1069,7 +1074,12 @@ s.innerHTML=`
             },0);
             p.totalCaracolasEarned = p.totalXpEarned || 0;
             p.caracolas = Math.max(0, (p.totalXpEarned||0) - xpGastadoEnPokemon);
+            p.totalCaracolasSpent = xpGastadoEnPokemon;
             console.log("Migración caracolas:", {totalGanado:p.totalCaracolasEarned, gastado:xpGastadoEnPokemon, saldo:p.caracolas});
+          }
+          // Si ya tenía caracolas pero aún no el campo spent, sembrarlo
+          if(typeof p.totalCaracolasSpent!=="number"){
+            p.totalCaracolasSpent = Math.max(0, (p.totalCaracolasEarned||0) - (p.caracolas||0));
           }
           if(typeof p.gastosStreakDays!=="number")  p.gastosStreakDays=0;
           if(!p.gastosLastDate)                    p.gastosLastDate=null;
@@ -1161,6 +1171,7 @@ s.innerHTML=`
             totalCoinsEarned:player.totalCoinsEarned||0,
             weekStart:player.weekStart||"", weekCoinsEarned:player.weekCoinsEarned||0,
             caracolas:player.caracolas||0, totalCaracolasEarned:player.totalCaracolasEarned||0,
+            totalCoinsSpent:player.totalCoinsSpent||0, totalCaracolasSpent:player.totalCaracolasSpent||0,
           },
           tareas:tasks, pokedex:player.caughtIds,
           tareasCompletadas: done.map(id => ({fecha:TODAY(), task_id:id})),
@@ -1177,10 +1188,23 @@ s.innerHTML=`
             level: e.level, xp: e.xp, totalXpEarned: e.totalXpEarned,
             streak: e.streak, totalDone: e.totalDone, lastDate: e.lastDate,
             badges: e.badges || [], caughtIds: mergedCaught,
-            coins: e.coins, totalCoinsEarned: e.totalCoinsEarned,
+            // ── Saldo robusto: earned y spent solo crecen → fusionar por MÁXIMO
+            //    y derivar el saldo. Elimina pérdidas de saldo entre dispositivos.
+            ...(function(){
+              const earnedC = Math.max(prev.totalCoinsEarned||0, e.totalCoinsEarned||0);
+              const spentC  = Math.max(prev.totalCoinsSpent||0,  (typeof e.totalCoinsSpent==="number"?e.totalCoinsSpent:0));
+              const earnedS = Math.max(prev.totalCaracolasEarned||0, (typeof e.totalCaracolasEarned==="number"?e.totalCaracolasEarned:0));
+              const spentS  = Math.max(prev.totalCaracolasSpent||0,  (typeof e.totalCaracolasSpent==="number"?e.totalCaracolasSpent:0));
+              return {
+                totalCoinsEarned: earnedC,
+                totalCoinsSpent:  spentC,
+                coins: Math.max(0, earnedC - spentC),
+                totalCaracolasEarned: earnedS,
+                totalCaracolasSpent:  spentS,
+                caracolas: Math.max(0, earnedS - spentS),
+              };
+            })(),
             weekStart: e.weekStart, weekCoinsEarned: e.weekCoinsEarned,
-            caracolas: (typeof e.caracolas==="number" ? e.caracolas : prev.caracolas),
-            totalCaracolasEarned: (typeof e.totalCaracolasEarned==="number" ? e.totalCaracolasEarned : prev.totalCaracolasEarned),
           };
           try{ localStorage.setItem(`pq-${user.username}-player`, JSON.stringify(updated)); }catch{}
           return updated;
@@ -1527,7 +1551,8 @@ s.innerHTML=`
 
     const newBadges=b.filter(id=>!player.badges.includes(id));
     const updatedPlayer = {...player, caughtIds:newCaught, badges:b,
-      caracolas: Math.max(0, (player.caracolas||0) - poke.xp)};
+      caracolas: Math.max(0, (player.caracolas||0) - poke.xp),
+      totalCaracolasSpent: (player.totalCaracolasSpent||0) + poke.xp};
     setPlayer(updatedPlayer);
     upsertDay(done, updatedPlayer, todayXp);
     pushPokemon(poke.id);
@@ -1782,7 +1807,9 @@ const deleteFromSheet = async () => {
       confirmText: "¡Canjear!",
     });
     if(!ok) return;
-    const newPlayer = {...player, coins: player.coins - reward.costCoins};
+    const newPlayer = {...player,
+      coins: Math.max(0, player.coins - reward.costCoins),
+      totalCoinsSpent: (player.totalCoinsSpent||0) + reward.costCoins};
     setPlayer(newPlayer);
     const newRd = {
       id:`rd-${Date.now()}`,
@@ -1967,8 +1994,10 @@ const deleteFromSheet = async () => {
     streak:p.streak, totalDone:p.totalDone, lastDate:p.lastDate||"",
     badges:p.badges||[],
     coins:p.coins||0, totalCoinsEarned:p.totalCoinsEarned||0,
+    totalCoinsSpent:p.totalCoinsSpent||0,
     weekStart:p.weekStart||"", weekCoinsEarned:p.weekCoinsEarned||0,
     caracolas:p.caracolas||0, totalCaracolasEarned:p.totalCaracolasEarned||0,
+    totalCaracolasSpent:p.totalCaracolasSpent||0,
   });
   const pushCategorias = (cats) => cloudPost({
     type:"categorias", usuario:user.displayName, categorias:cats

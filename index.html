@@ -603,13 +603,64 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
   const [pMes,  setPMes]  = useState(now.getMonth()+1);   // 1-12
   const [pAnio, setPAnio] = useState(now.getFullYear());
 
-  const cargarGastos = async () => {
+  const CACHE_KEY   = `pq-${user.username}-gastos-cache`;
+  const PENDING_KEY = `pq-${user.username}-gastos-pendientes`;
+
+  // Cargar desde el Sheet y refrescar el caché local
+  const cargarGastosRemoto = async () => {
     setGLoading(true);
     const r = await cloudGet("gastos", { usuario: user.displayName });
-    if (r && r.ok && Array.isArray(r.gastos)) setGastosList(r.gastos);
+    if (r && r.ok && Array.isArray(r.gastos)) {
+      setGastosList(r.gastos);
+      try{ localStorage.setItem(CACHE_KEY, JSON.stringify(r.gastos)); }catch{}
+    }
     setGLoading(false);
   };
-  useEffect(() => { cargarGastos(); }, []);
+
+  // Al entrar: usar caché al instante; solo leer del Sheet si NO hay caché
+  useEffect(() => {
+    let cache = null;
+    try{ const c = localStorage.getItem(CACHE_KEY); if(c) cache = JSON.parse(c); }catch{}
+    if (cache && Array.isArray(cache)) {
+      setGastosList(cache);
+      setGLoading(false);
+    } else {
+      cargarGastosRemoto();   // primera vez, sin caché
+    }
+    // Reintentar enviar pendientes que hayan quedado de una sesión anterior
+    enviarPendientes();
+  }, []);
+
+  const _loteTimer = useRef(null);
+
+  // Enviar todos los gastos pendientes en UNA sola llamada de lote
+  const enviarPendientes = async () => {
+    let pend = [];
+    try{ const p = localStorage.getItem(PENDING_KEY); if(p) pend = JSON.parse(p); }catch{}
+    if (!Array.isArray(pend) || pend.length === 0) return;
+    try {
+      await fetch(DEFAULT_SCRIPT_URL, {
+        method:"POST", mode:"no-cors",
+        body: JSON.stringify({ type:"gastos_lote", secret:API_SECRET, usuario:user.displayName, gastos:pend })
+      });
+      // Asumimos éxito (no-cors no confirma); limpiamos la cola
+      try{ localStorage.removeItem(PENDING_KEY); }catch{}
+    } catch(_) { /* si falla, quedan en la cola para el próximo intento */ }
+  };
+
+  // Agenda el envío del lote tras una pausa (agrupa varios gastos seguidos)
+  const agendarEnvioLote = () => {
+    if (_loteTimer.current) clearTimeout(_loteTimer.current);
+    _loteTimer.current = setTimeout(enviarPendientes, 1500);
+  };
+
+  // Al ocultar/cerrar la app: enviar de inmediato lo pendiente
+  useEffect(() => {
+    const h = () => { if (document.visibilityState === "hidden") { if(_loteTimer.current) clearTimeout(_loteTimer.current); enviarPendientes(); } };
+    document.addEventListener("visibilitychange", h);
+    window.addEventListener("pagehide", h);
+    return () => { document.removeEventListener("visibilitychange", h); window.removeEventListener("pagehide", h); };
+  }, []);
 
   // Recalcular al cambiar de período seleccionado
   const gastosDelPeriodo = gastosList.filter(g => {
@@ -634,14 +685,9 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
     }
     setGSending(true);
 
-    try {
-  await fetch(DEFAULT_SCRIPT_URL, {
-    method: "POST",
-    mode: "no-cors",
-    body: JSON.stringify({
-      type:       "gasto",
-      secret:     API_SECRET,
-      usuario:    user.displayName,
+    // Construir el gasto y agregarlo a la lista local + cola de pendientes (sin leer del Sheet)
+    const nuevoGasto = {
+      id:         "loc-" + Date.now() + "-" + Math.floor(Math.random()*1000),
       fecha:      gFecha,
       monto:      Number(gMonto.replace(/\./g,"").replace(",",".")),
       categoria:  gCategoria,
@@ -650,9 +696,22 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
       gasto_fijo: gFijo,
       corresponde:gCorrespon,
       comentario: gComent,
-    })
-  });
-} catch(_){}
+    };
+    // 1) Actualizar la UI al instante
+    setGastosList(prev => {
+      const next = [nuevoGasto, ...prev];
+      try{ localStorage.setItem(CACHE_KEY, JSON.stringify(next)); }catch{}
+      return next;
+    });
+    // 2) Encolar para envío por lote
+    try {
+      let pend = [];
+      const p = localStorage.getItem(PENDING_KEY);
+      if (p) pend = JSON.parse(p);
+      pend.push(nuevoGasto);
+      localStorage.setItem(PENDING_KEY, JSON.stringify(pend));
+    } catch(_){}
+    agendarEnvioLote();
 
     const today2=TODAY();
     const esHoyEnvio=gFecha===today2;
@@ -702,8 +761,6 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
     showToast(msg,"💸");
     if(rachaBonus>0) setTimeout(()=>showToast(`🎉 ¡${newStreakG} días de racha! +${rachaBonus} XP bonus`,"🏆"),1500);
     setTimeout(()=>{setGMonto("");setGComent("");setGFecha(todayStr);setGSent(false);},2000);
-    // El Sheet tarda ~1-2s en reflejar; recargamos después de un momento
-    setTimeout(()=>{cargarGastos();},2500);
   };
 
   const inpG={...inp,width:"100%",marginBottom:0};
@@ -763,7 +820,7 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
               <div key={g.id} className="flex items-center gap-2 rounded-lg px-2.5 py-2" style={{background:BG,border:`1px solid ${BORD}`}}>
                 <span style={{fontSize:14,flexShrink:0}}>{esFijo(g)?"📌":"🔄"}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="truncate" style={{fontSize:12,color:"#e2e8f0"}}>{g.categoria}</p>
+                  <p className="truncate" style={{fontSize:12,color:"#e2e8f0"}}>{g.comentario||g.categoria||"Sin descripción"}</p>
                   <p style={{fontSize:10,color:MUTED}}>{String(g.fecha).slice(0,10)}</p>
                 </div>
                 <span style={{fontSize:13,fontWeight:"black",color:"#e2e8f0",flexShrink:0}}>{formatPesos(g.monto)}</span>

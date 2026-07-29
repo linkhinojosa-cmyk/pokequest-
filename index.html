@@ -581,6 +581,7 @@ const artSprite  = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/ma
 // ─── GastosScreen ─────────────────────────────────────────────────────────────
 function FinanzasScreen({ player, setPlayer, pushEstado, showToast, user, inp, CARD, BORD, MUTED, API_SECRET, cloudGet }) {
   const [vista, setVista] = useState("registrar"); // "registrar" | "analizar"
+  const [tipoReg, setTipoReg] = useState("gasto");  // "gasto" | "ingreso"
   const ORIGENES_ING = [
     {label:"Cecinas Hinojosa", icon:"🥩"},
     {label:"Uber",             icon:"🚗"},
@@ -1093,9 +1094,22 @@ const findCatG = (label) => CATEGORIAS_GASTO.find(c => c.label===label || c.id==
       </>)}
 
       {vista==="registrar"&&(<>
+      {/* Sub-toggle Gasto / Ingreso */}
+      <div className="flex gap-2 mb-4 p-1 rounded-2xl" style={{background:BG,border:`1px solid ${BORD}`}}>
+        {[["gasto","💸 Gasto","#fbbf24"],["ingreso","💵 Ingreso","#4ade80"]].map(([t,lbl,col])=>(
+          <button key={t} onClick={()=>setTipoReg(t)}
+            className="flex-1 py-2.5 rounded-xl font-black transition-all"
+            style={{background:tipoReg===t?(t==="gasto"?"linear-gradient(135deg,#d97706,#fbbf24)":"linear-gradient(135deg,#16a34a,#4ade80)"):"transparent",
+              color:tipoReg===t?"#000":MUTED,border:"none",cursor:"pointer",fontSize:14}}>
+            {lbl}
+          </button>
+        ))}
+      </div>
+
+      {tipoReg==="gasto"&&(<>
       {/* Formulario de GASTO */}
       <div className="rounded-2xl p-4 mb-4" style={{background:CARD,border:`1px solid ${BORD}`}}>
-         <h3 className="font-black mb-4" style={{color:"#fbbf24",fontSize:15}}>💸 Registrar Gasto</h3>
+        <h3 className="font-black mb-4" style={{color:"#fbbf24",fontSize:15}}>💸 Registrar Gasto</h3>
         <div className="flex flex-col gap-3">
           <div><label style={labelG}>Fecha</label>
             <input type="date" value={gFecha} onChange={e=>setGFecha(e.target.value)} style={inpG}/></div>
@@ -1153,7 +1167,9 @@ const findCatG = (label) => CATEGORIAS_GASTO.find(c => c.label===label || c.id==
         <p>• Cada gasto: +{formatPesos(PESOS_POR_GASTO)} a tu saldo</p>
         <p>• Sin límite de gastos por día ✅</p>
       </div>
+      </>)}
 
+      {tipoReg==="ingreso"&&(<>
       {/* Formulario de INGRESO */}
       <div className="rounded-2xl p-4 mb-4" style={{background:CARD,border:`1px solid ${BORD}`}}>
         <h3 className="font-black mb-4" style={{color:"#4ade80",fontSize:15}}>💵 Registrar Ingreso</h3>
@@ -1177,6 +1193,7 @@ const findCatG = (label) => CATEGORIAS_GASTO.find(c => c.label===label || c.id==
           </button>
         </div>
       </div>
+      </>)}
       </>)}
     </div>
   );

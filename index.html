@@ -753,7 +753,7 @@ const findCatG = (label) => CATEGORIAS_GASTO.find(c => c.label===label || c.id==
   }, []);
 
   const handleRegistrarIngreso = () => {
-    const montoNum = Number(String(iMonto).replace(/\./g,"").replace(",","."));
+    const montoNum = Math.round(Number(String(iMonto).replace(/[^\d]/g,"")));
     if(!iMonto || isNaN(montoNum) || montoNum<=0){ showToast("Ingresa un monto válido","⚠️"); return; }
     setISending(true);
     const nuevoIngreso = {
@@ -836,7 +836,7 @@ const findCatG = (label) => CATEGORIAS_GASTO.find(c => c.label===label || c.id==
   const esHoy        = gFecha === todayStr;
 
   const handleRegistrar = async () => {
-    if(!gMonto||isNaN(Number(gMonto.replace(/\./g,"").replace(",",".")))) {
+    if(!gMonto||isNaN(Number(String(gMonto).replace(/[^\d]/g,"")))||Number(String(gMonto).replace(/[^\d]/g,""))<=0) {
       showToast("Ingresa un monto válido","⚠️"); return;
     }
     setGSending(true);
@@ -845,7 +845,7 @@ const findCatG = (label) => CATEGORIAS_GASTO.find(c => c.label===label || c.id==
     const nuevoGasto = {
       id:          "loc-" + Date.now() + "-" + Math.floor(Math.random()*1000),
       fecha:       gFecha,
-      monto:       Number(gMonto.replace(/\./g,"").replace(",",".")),
+      monto:       Math.round(Number(String(gMonto).replace(/[^\d]/g,""))),
       categoria:   gCategoria,
       subcategoria:gSubcat,
       medio_pago:  gMedio,
@@ -2441,6 +2441,12 @@ const deleteFromSheet = async () => {
       if (data.canjes)       setRedemptions(data.canjes);
       if (data.recompensas)  setRewards(data.recompensas);
       if (data.diario)       setDailyStats(data.diario);
+
+      // Limpiar cachés de gastos e ingresos para que Finanzas recargue del Sheet
+      try{
+        localStorage.removeItem(`pq-${user.username}-gastos-cache`);
+        localStorage.removeItem(`pq-${user.username}-ingresos-cache`);
+      }catch{}
 
       showToast("✅ Datos actualizados desde el Sheet","🔄");
     } catch(err) {

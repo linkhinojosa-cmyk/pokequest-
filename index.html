@@ -633,6 +633,7 @@ const findCatG = (label) => CATEGORIAS_GASTO.find(c => c.label===label || c.id==
   const now = new Date();
   const [pMes,  setPMes]  = useState(now.getMonth()+1);   // 1-12
   const [pAnio, setPAnio] = useState(now.getFullYear());
+  const [catAbierta, setCatAbierta] = useState(null);     // categoría expandida en el desglose
 
   const CACHE_KEY   = `pq-${user.username}-gastos-cache`;
   const PENDING_KEY = `pq-${user.username}-gastos-pendientes`;
@@ -705,6 +706,26 @@ const findCatG = (label) => CATEGORIAS_GASTO.find(c => c.label===label || c.id==
   const ultimos5 = gastosList.slice(0,5);
   const MESES_NOM = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
+  // ── Desglose por categoría principal (del período seleccionado) ──
+  const totalPeriodo = gastosDelPeriodo.reduce((s,g)=>s+(g.monto||0),0);
+  const porCategoria = (() => {
+    const mapa = {};
+    gastosDelPeriodo.forEach(g => {
+      const cat = findCatG(g.categoria);
+      const key = cat ? cat.label : (g.categoria || "Sin categoría");
+      if(!mapa[key]) mapa[key] = { label:key, cat, total:0, count:0, subs:{} };
+      mapa[key].total += (g.monto||0);
+      mapa[key].count += 1;
+      const sub = g.subcategoria || "Sin subcategoría";
+      if(!mapa[key].subs[sub]) mapa[key].subs[sub] = { label:sub, total:0, count:0 };
+      mapa[key].subs[sub].total += (g.monto||0);
+      mapa[key].subs[sub].count += 1;
+    });
+    return Object.values(mapa)
+      .map(c => ({ ...c, pct: totalPeriodo ? Math.round(c.total/totalPeriodo*100) : 0,
+                   subsArr: Object.values(c.subs).sort((a,b)=>b.total-a.total) }))
+      .sort((a,b)=>b.total-a.total);
+  })();
   const gastosHoy    = player.gastosHoy      || 0;
   const gastosStreak = player.gastosStreakDays|| 0;
   const gastosTotal  = player.gastosTotal    || 0;
@@ -838,6 +859,55 @@ const findCatG = (label) => CATEGORIAS_GASTO.find(c => c.label===label || c.id==
           <span style={{fontSize:14,fontWeight:"black",color:"#e2e8f0"}}>{formatPesos(totalVariable+totalFijo)}</span>
           <span style={{fontSize:11,color:MUTED}}> · {gastosDelPeriodo.length} gastos</span>
         </div>
+      </div>
+
+      {/* ── Desglose por categoría ── */}
+      <div className="rounded-2xl p-3 mb-4" style={{background:CARD,border:`1px solid ${BORD}`}}>
+        <div style={{fontSize:13,fontWeight:"bold",color:"#e2e8f0",marginBottom:10}}>📂 Gasto por categoría</div>
+        {porCategoria.length===0?(
+          <div style={{fontSize:12,color:MUTED,textAlign:"center",padding:"8px 0"}}>Sin gastos en este período</div>
+        ):(
+          <div className="space-y-2">
+            {porCategoria.map(c=>{
+              const abierta = catAbierta===c.label;
+              const color = c.cat ? c.cat.color : "#94a3b8";
+              return(
+                <div key={c.label} className="rounded-xl overflow-hidden" style={{background:BG,border:`1px solid ${BORD}`}}>
+                  <button onClick={()=>setCatAbierta(abierta?null:c.label)}
+                    className="w-full px-3 py-2.5" style={{background:"transparent",border:"none",cursor:"pointer"}}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span style={{fontSize:15,flexShrink:0}}>{c.cat?c.cat.icon:"❓"}</span>
+                      <span style={{fontSize:12,fontWeight:"bold",color:"#e2e8f0",flex:1,textAlign:"left"}}>{c.label}</span>
+                      <span style={{fontSize:13,fontWeight:"black",color}}>{formatPesos(c.total)}</span>
+                      <span style={{fontSize:11,color:MUTED,minWidth:34,textAlign:"right"}}>{c.pct}%</span>
+                      <span style={{fontSize:10,color:MUTED,flexShrink:0}}>{abierta?"▲":"▼"}</span>
+                    </div>
+                    {/* barra de participación */}
+                    <div style={{height:5,borderRadius:3,background:"#1f2937",overflow:"hidden"}}>
+                      <div style={{height:"100%",width:`${c.pct}%`,background:color,borderRadius:3}}/>
+                    </div>
+                    <div style={{fontSize:10,color:MUTED,textAlign:"left",marginTop:3}}>{c.count} {c.count===1?"movimiento":"movimientos"}</div>
+                  </button>
+                  {abierta&&(
+                    <div className="px-3 pb-2.5 space-y-1">
+                      {c.subsArr.map(s=>{
+                        const subPct = c.total?Math.round(s.total/c.total*100):0;
+                        return(
+                          <div key={s.label} className="flex items-center gap-2 rounded-lg px-2.5 py-1.5" style={{background:CARD,border:`1px solid ${BORD}`}}>
+                            <span style={{fontSize:11,color:"#cbd5e1",flex:1}}>{s.label}</span>
+                            <span style={{fontSize:10,color:MUTED}}>{s.count}×</span>
+                            <span style={{fontSize:11,fontWeight:"bold",color:"#e2e8f0",minWidth:64,textAlign:"right"}}>{formatPesos(s.total)}</span>
+                            <span style={{fontSize:10,color:MUTED,minWidth:32,textAlign:"right"}}>{subPct}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ── Últimos 5 gastos ── */}

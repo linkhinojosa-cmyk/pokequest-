@@ -503,7 +503,7 @@ const COINS_POR_GASTO  = PESOS_POR_GASTO * COINS_PER_PESO;
 const coinsToPesos = (c) => Math.floor((c||0)/COINS_PER_PESO);
 const formatPesos  = (p) => "$"+(p||0).toLocaleString("es-CL");
 const mondayOf = (dateStr) => {
-  const d = new Date(dateStr);
+  const d = new Date(dateStr + "T12:00:00");
   const day = d.getDay();
   const diff = day===0 ? -6 : 1-day;
   d.setDate(d.getDate()+diff);
@@ -2535,6 +2535,7 @@ const todayStr      = TODAY();
   const weekPending = LAST_7_DAYS(todayStr).map(fecha=>{
     const dayDone = weekDone[fecha] || [];
     const pendientes = tasks.filter(t=>{
+      if((t.frequency||"daily")==="once") return false; // las únicas no se repiten en el histórico
       if(!shouldShowToday(t, fecha)) return false;     // respeta frecuencia, vigencia y archivadas
       if(dayDone.includes(t.id))     return false;     // ya marcada ese día
       const creada = TASK_CREATED_DAY(t.id);           // no mostrar días previos a su creación

@@ -580,8 +580,29 @@ const artSprite  = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/ma
 
 // ─── GastosScreen ─────────────────────────────────────────────────────────────
 function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CARD, BORD, MUTED, API_SECRET, cloudGet }) {
-  const CATEGORIAS=["Alimentación","Supermercado","Restaurantes","Cafeterías","Delivery","Transporte","Combustible","Uber/Taxi","Locomoción colectiva","Salud","Farmacia","Médico","Educación","Cursos","Libros","Entretención","Streaming","Videojuegos","Ropa","Calzado","Accesorios","Hogar","Arriendo","Servicios básicos","Internet","Teléfono","Mascotas","Belleza","Deporte","Ahorro","Inversión","Regalo","Otro"];
-  const MEDIOS_PAGO=["Crédito","Débito","Efectivo","Transferencia","Prepago"];
+  // ── Categorías de gasto (principal → subcategorías) con ícono y color ──
+const CATEGORIAS_GASTO = [
+  {id:"vehiculo",    label:"Vehículo Uber",        icon:"🚗", color:"#f59e0b", dark:"#1c1200", subs:["Combustible","Peajes","Estacionamientos","Lavado","Mantenciones","Cambio de aceite","Neumáticos","Repuestos","Permisos","Revisión técnica","Seguro","TAG","Accesorios","Otros gastos del vehículo"]},
+  {id:"deudas",      label:"Deudas y Créditos",    icon:"💰", color:"#ef4444", dark:"#1c0808", subs:["Crédito Banco de Chile","Crédito Santander","Tarjetas de crédito","Préstamos personales","Intereses","Gastos de cobranza","Abonos extraordinarios","Otros pagos de deuda"]},
+  {id:"multas",      label:"Multas y Trámites",    icon:"⚖️", color:"#dc2626", dark:"#1c0606", subs:["Multas de tránsito","Partes TAG","Trámites notariales","Certificados","Costas judiciales","Honorarios abogado","Otros trámites"]},
+  {id:"vivienda",    label:"Vivienda",             icon:"🏠", color:"#8b5cf6", dark:"#140a24", subs:["Arriendo","Dividendo","Gastos comunes","Reparaciones","Muebles","Decoración","Ferretería","Jardín","Otros hogar"]},
+  {id:"servicios",   label:"Servicios Básicos",    icon:"💡", color:"#eab308", dark:"#1a1500", subs:["Agua","Luz","Gas","Internet","Telefonía móvil","Cable TV","Otros servicios"]},
+  {id:"alimentacion",label:"Alimentación",         icon:"🛒", color:"#22c55e", dark:"#08160c", subs:["Supermercado","Feria","Carnicería","Panadería","Delivery","Restaurante","Cafetería","Snacks","Otros alimentos"]},
+  {id:"mascotas",    label:"Mascotas",             icon:"🐱", color:"#f97316", dark:"#1a0e04", subs:["Alimento gatos","Arena sanitaria","Veterinario","Medicamentos","Juguetes","Accesorios","Peluquería","Emergencias","Otros mascotas"]},
+  {id:"salud",       label:"Salud",                icon:"❤️", color:"#ec4899", dark:"#1c0812", subs:["Médicos","Dentista","Medicamentos","Exámenes","Kinesiología","Psicólogo","Seguro de salud","Otros salud"]},
+  {id:"personales",  label:"Compras Personales",   icon:"👕", color:"#06b6d4", dark:"#04161a", subs:["Ropa","Calzado","Accesorios","Perfumería","Cuidado personal","Barbería/Peluquería","Cosméticos","Otros personales"]},
+  {id:"entretencion",label:"Entretenimiento",      icon:"🎮", color:"#a855f7", dark:"#12071c", subs:["Cine","Streaming","Videojuegos","Libros","Música","Eventos","Hobbies","Otros entretenimiento"]},
+  {id:"salidas",     label:"Salidas",              icon:"🍔", color:"#f43f5e", dark:"#1c0810", subs:["Restaurantes","Comida rápida","Cafeterías","Viajes","Paseos","Vacaciones","Otros"]},
+  {id:"suscripciones",label:"Suscripciones",       icon:"📺", color:"#3b82f6", dark:"#081226", subs:["Netflix","Spotify","YouTube Premium","Google One","Microsoft 365","ChatGPT","Gemini","Claude","Otras suscripciones"]},
+  {id:"trabajo",     label:"Trabajo",              icon:"💼", color:"#64748b", dark:"#0f141a", subs:["Herramientas","Software","Equipamiento","Papelería","Cursos","Capacitación","Dominio web","Hosting","Firebase","Otros gastos laborales"]},
+  {id:"regalos",     label:"Regalos y Donaciones", icon:"🎁", color:"#d946ef", dark:"#18081c", subs:["Cumpleaños","Navidad","Donaciones","Ayudas familiares","Otros"]},
+  {id:"familia",     label:"Familia",              icon:"👨‍👩‍👧", color:"#14b8a6", dark:"#04161a", subs:["Gastos pareja","Hijos","Padres","Aportes familiares","Otros"]},
+  {id:"finanzas",    label:"Finanzas",             icon:"🏦", color:"#10b981", dark:"#04160f", subs:["Comisión bancaria","Transferencias","Impuestos","Inversiones","Ahorro","Fondo de emergencia","Otros financieros"]},
+  {id:"otros",       label:"Otros",                icon:"❓", color:"#94a3b8", dark:"#12141a", subs:["Gastos varios","Sin clasificar"]},
+];
+const MEDIOS_PAGO_G  = ["Efectivo","Débito","Crédito","Transferencia","Cuenta corriente","Cuenta vista","Otro"];
+const RESPONSABLES_G = ["Pedro","Claudia","Ambos"];
+const findCatG = (label) => CATEGORIAS_GASTO.find(c => c.label===label || c.id===label);
   const PRIORIDADES=["Esencial","Importante","Prescindible"];
   const CORRESPONDE=["Personal","Familiar","Trabajo","Empresa"];
   const XP_NEEDED=(lv)=>lv*lv*50;
@@ -589,12 +610,22 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
   const todayStr=TODAY();
   const [gFecha,    setGFecha]    = useState(todayStr);
   const [gMonto,    setGMonto]    = useState("");
-  const [gCategoria,setGCategoria]= useState(CATEGORIAS[0]);
-  const [gMedio,    setGMedio]    = useState(MEDIOS_PAGO[0]);
+  const [gCategoria,setGCategoria]= useState(CATEGORIAS_GASTO[0].label);
+  const [gSubcat,   setGSubcat]   = useState(CATEGORIAS_GASTO[0].subs[0]);
+  const [gMedio,    setGMedio]    = useState(MEDIOS_PAGO_G[0]);
+  const [gResponsable,setGResponsable]= useState(RESPONSABLES_G[2]); // "Ambos" por defecto
   const [gPrioridad,setGPrioridad]= useState(PRIORIDADES[0]);
   const [gFijo,     setGFijo]     = useState("No");
   const [gComent,   setGComent]   = useState("");
   const [gCorrespon,setGCorrespon]= useState(CORRESPONDE[0]);
+  // Subcategorías disponibles según la categoría elegida
+  const subsDisponibles = (findCatG(gCategoria)?.subs) || [];
+  // Al cambiar de categoría, resetear la subcategoría a la primera
+  const cambiarCategoria = (label) => {
+    setGCategoria(label);
+    const c = findCatG(label);
+    setGSubcat(c && c.subs.length ? c.subs[0] : "");
+  };
   const [gSending,  setGSending]  = useState(false);
   const [gSent,     setGSent]     = useState(false);
   const [gastosList,setGastosList]= useState([]);
@@ -687,15 +718,17 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
 
     // Construir el gasto y agregarlo a la lista local + cola de pendientes (sin leer del Sheet)
     const nuevoGasto = {
-      id:         "loc-" + Date.now() + "-" + Math.floor(Math.random()*1000),
-      fecha:      gFecha,
-      monto:      Number(gMonto.replace(/\./g,"").replace(",",".")),
-      categoria:  gCategoria,
-      medio_pago: gMedio,
-      prioridad:  gPrioridad,
-      gasto_fijo: gFijo,
-      corresponde:gCorrespon,
-      comentario: gComent,
+      id:          "loc-" + Date.now() + "-" + Math.floor(Math.random()*1000),
+      fecha:       gFecha,
+      monto:       Number(gMonto.replace(/\./g,"").replace(",",".")),
+      categoria:   gCategoria,
+      subcategoria:gSubcat,
+      medio_pago:  gMedio,
+      responsable: gResponsable,
+      prioridad:   gPrioridad,
+      gasto_fijo:  gFijo,
+      corresponde: gCorrespon,
+      comentario:  gComent,
     };
     // 1) Actualizar la UI al instante
     setGastosList(prev => {
@@ -845,11 +878,20 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
           <div><label style={labelG}>Monto (pesos)</label>
             <input type="number" placeholder="Ej: 5000" value={gMonto} onChange={e=>setGMonto(e.target.value)} style={inpG} inputMode="numeric"/></div>
           <div><label style={labelG}>Categoría</label>
-            <select value={gCategoria} onChange={e=>setGCategoria(e.target.value)} style={inpG}>
-              {CATEGORIAS.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+            <select value={gCategoria} onChange={e=>cambiarCategoria(e.target.value)} style={inpG}>
+              {CATEGORIAS_GASTO.map(c=><option key={c.id} value={c.label}>{c.icon} {c.label}</option>)}</select></div>
+          <div><label style={labelG}>Subcategoría</label>
+            <select value={gSubcat} onChange={e=>setGSubcat(e.target.value)} style={inpG}>
+              {subsDisponibles.map(s=><option key={s} value={s}>{s}</option>)}</select></div>
+          <div><label style={labelG}>Descripción</label>
+            <input type="text" placeholder="Descripción breve..." value={gComent}
+              onChange={e=>setGComent(e.target.value)} style={inpG} maxLength={200}/></div>
           <div><label style={labelG}>Medio de pago</label>
             <select value={gMedio} onChange={e=>setGMedio(e.target.value)} style={inpG}>
-              {MEDIOS_PAGO.map(m=><option key={m} value={m}>{m}</option>)}</select></div>
+              {MEDIOS_PAGO_G.map(m=><option key={m} value={m}>{m}</option>)}</select></div>
+          <div><label style={labelG}>Responsable del gasto</label>
+            <select value={gResponsable} onChange={e=>setGResponsable(e.target.value)} style={inpG}>
+              {RESPONSABLES_G.map(r=><option key={r} value={r}>{r}</option>)}</select></div>
           <div><label style={labelG}>Prioridad</label>
             <div className="flex gap-2">
               {PRIORIDADES.map(p=>(
@@ -868,11 +910,7 @@ function GastosScreen({ player, setPlayer, pushEstado, showToast, user, inp, CAR
           <div><label style={labelG}>¿A qué corresponde?</label>
             <select value={gCorrespon} onChange={e=>setGCorrespon(e.target.value)} style={inpG}>
               {CORRESPONDE.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
-          <div><label style={labelG}>Comentario (opcional)</label>
-            <input type="text" placeholder="Descripción breve..." value={gComent}
-              onChange={e=>setGComent(e.target.value)} style={inpG} maxLength={200}/></div>
-
-          <button onClick={handleRegistrar} disabled={gSending||gSent}
+              <button onClick={handleRegistrar} disabled={gSending||gSent}
             className="w-full py-3.5 rounded-2xl font-black text-sm"
             style={{background:gSent?"#14532d":"linear-gradient(135deg,#d97706,#fbbf24)",
               color:gSent?"#4ade80":"#000",border:"none",

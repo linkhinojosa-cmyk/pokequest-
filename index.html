@@ -683,18 +683,30 @@ const findCatG = (label) => CATEGORIAS_GASTO.find(c => c.label===label || c.id==
   const _loteTimer = useRef(null);
 
   // Enviar todos los gastos pendientes en UNA sola llamada de lote
+  const _enviandoG = useRef(false);
   const enviarPendientes = async () => {
+    if (_enviandoG.current) return;            // ya hay un envío en curso
     let pend = [];
     try{ const p = localStorage.getItem(PENDING_KEY); if(p) pend = JSON.parse(p); }catch{}
     if (!Array.isArray(pend) || pend.length === 0) return;
+    _enviandoG.current = true;
+    try{ localStorage.removeItem(PENDING_KEY); }catch{}   // limpiar ANTES de enviar
     try {
       await fetch(DEFAULT_SCRIPT_URL, {
         method:"POST", mode:"no-cors",
         body: JSON.stringify({ type:"gastos_lote", secret:API_SECRET, usuario:user.displayName, gastos:pend })
       });
-      // Asumimos éxito (no-cors no confirma); limpiamos la cola
-      try{ localStorage.removeItem(PENDING_KEY); }catch{}
-    } catch(_) { /* si falla, quedan en la cola para el próximo intento */ }
+    } catch(_) {
+      // Si falló, devolver los pendientes a la cola para reintentar
+      try{
+        let actual = [];
+        const p = localStorage.getItem(PENDING_KEY);
+        if(p) actual = JSON.parse(p);
+        localStorage.setItem(PENDING_KEY, JSON.stringify([...pend, ...actual]));
+      }catch{}
+    } finally {
+      _enviandoG.current = false;
+    }
   };
 
   // Agenda el envío del lote tras una pausa (agrupa varios gastos seguidos)
@@ -724,17 +736,29 @@ const findCatG = (label) => CATEGORIAS_GASTO.find(c => c.label===label || c.id==
       try{ localStorage.setItem(CACHE_KEY_I, JSON.stringify(r.ingresos)); }catch{}
     }
   };
+  const _enviandoI = useRef(false);
   const enviarPendientesI = async () => {
+    if (_enviandoI.current) return;
     let pend = [];
     try{ const p = localStorage.getItem(PENDING_KEY_I); if(p) pend = JSON.parse(p); }catch{}
     if (!Array.isArray(pend) || pend.length === 0) return;
+    _enviandoI.current = true;
+    try{ localStorage.removeItem(PENDING_KEY_I); }catch{}
     try {
       await fetch(DEFAULT_SCRIPT_URL, {
         method:"POST", mode:"no-cors",
         body: JSON.stringify({ type:"ingresos_lote", secret:API_SECRET, usuario:user.displayName, ingresos:pend })
       });
-      try{ localStorage.removeItem(PENDING_KEY_I); }catch{}
-    } catch(_) {}
+    } catch(_) {
+      try{
+        let actual = [];
+        const p = localStorage.getItem(PENDING_KEY_I);
+        if(p) actual = JSON.parse(p);
+        localStorage.setItem(PENDING_KEY_I, JSON.stringify([...pend, ...actual]));
+      }catch{}
+    } finally {
+      _enviandoI.current = false;
+    }
   };
   const agendarEnvioLoteI = () => {
     if (_loteTimerI.current) clearTimeout(_loteTimerI.current);

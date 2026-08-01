@@ -684,6 +684,7 @@ const findCatG = (label) => CATEGORIAS_GASTO.find(c => c.label===label || c.id==
 
   // Enviar todos los gastos pendientes en UNA sola llamada de lote
   const _enviandoG = useRef(false);
+  const _registrandoG = useRef(false);
   const enviarPendientes = async () => {
     if (_enviandoG.current) return;            // ya hay un envío en curso
     let pend = [];
@@ -860,9 +861,11 @@ const findCatG = (label) => CATEGORIAS_GASTO.find(c => c.label===label || c.id==
   const esHoy        = gFecha === todayStr;
 
   const handleRegistrar = async () => {
+    if(_registrandoG.current) return;   // bloqueo síncrono anti doble-tap
     if(!gMonto||isNaN(Number(String(gMonto).replace(/[^\d]/g,"")))||Number(String(gMonto).replace(/[^\d]/g,""))<=0) {
       showToast("Ingresa un monto válido","⚠️"); return;
     }
+    _registrandoG.current = true;
     setGSending(true);
 
     // Construir el gasto y agregarlo a la lista local + cola de pendientes (sin leer del Sheet)

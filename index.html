@@ -938,7 +938,7 @@ const findCatG = (label) => CATEGORIAS_GASTO.find(c => c.label===label || c.id==
     try{ localStorage.setItem(`pq-${user.username}-player`, JSON.stringify(newP)); }catch{}
     pushEstado(newP);
 
-    setGSending(false); setGSent(true);
+    setGSending(false); setGSent(true); _registrandoG.current = false;
     const monedasTxt=`+${formatPesos(PESOS_POR_GASTO)}`;
     const msg=xpBono>0
       ?`+${xpGain+xpBono} XP · ${monedasTxt} · 🔥 Racha: ${newStreakG}d`
